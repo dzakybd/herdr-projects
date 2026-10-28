@@ -121,6 +121,8 @@
 .sw-set-label { color: var(--sw-text); } .sw-set.is-own .sw-set-label { color: var(--sw-strong); font-weight: var(--fw-semibold, 600); }
 .sw-set-pick, .sw-set-box { min-height: var(--touch-target, 40px); max-width: 100%; padding: 0 var(--space-3, 12px); border: var(--hairline, 1px) solid var(--border-strong, var(--sw-line)); border-radius: var(--radius-md, 8px); background: var(--sw-lift); color: var(--sw-text); font: inherit; }
 .sw-set-box { flex: 1 1 14em; min-width: 0; }
+.sw-form-when { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); margin: var(--space-2, 8px) 0; }
+.sw-form-when > * { flex: 1 1 8em; }
 .sw-set-means, .sw-set-from { margin: var(--space-1, 4px) 0 0; color: var(--sw-dim); font-size: var(--fs-sm, 13px); overflow-wrap: anywhere; }
 .sw-set-back { display: inline-flex; align-items: center; gap: var(--space-1, 4px); margin-left: var(--space-2, 8px); min-height: var(--touch-target, 40px); padding: 0 var(--space-2, 8px); border: 0; background: none; color: var(--accent, #f0a830); font: inherit; cursor: pointer; }
 .sw-set-back svg, .sw-acct svg, .sw-accounts-head svg { width: 16px; height: 16px; flex: none; }
