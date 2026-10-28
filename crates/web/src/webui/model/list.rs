@@ -119,9 +119,14 @@ pub fn list_of(s: &State, t: &Theme) -> Value {
         "unread": unread, "empty": empty,
     })
 }
-/// Every repo the board knows, by name with its key, and the one new tasks go to: to pick from (web.rs: the repo call).
+/// The repos to pick from (web.rs: the repo call): the one new tasks go to, those with a task that is not archived, and
+/// those with a workspace open in herdr, by name with their key. A repo the board only remembers (its workspace closed,
+/// its tasks gone) is not offered.
 fn repos_of(s: &State) -> Vec<Value> {
-    let mut names: Vec<String> = crate::store::repos::known_repos().keys().cloned().collect();
+    let open = super::super::web::open_repos();
+    let mut names: Vec<String> = crate::store::repos::known_repos().iter()
+        .filter(|(n, d)| **n == s.data.repo || s.data.items.iter().any(|r| r.s("repo") == n.as_str() && !r.b("archivedAt")) || open.iter().any(|o| Some(o.as_path()) == std::fs::canonicalize(text(d)).ok().as_deref()))
+        .map(|(n, _)| n.clone()).collect();
     names.sort();
     names.into_iter().map(|n| json!({ "key": s.data.keys.get(&n).cloned().unwrap_or_default(), "now": n == s.data.repo, "name": n })).collect()
 }
