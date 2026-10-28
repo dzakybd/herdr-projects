@@ -231,6 +231,12 @@ pub fn call_with(client_id: &str, call: &str, args: Value, machine: &str, pcs: O
             set_repo(c, text(dir));
             Ok(snapshot(c, ""))
         }
+        // An account for several repos at once (apply.rs): the sheet's roles, repos and account.
+        "apply-account" => {
+            if !drive { return watch(); }
+            let said = super::apply::apply(&args)?;
+            let mut o = snapshot(c, ""); o.as_object_mut().unwrap().insert("said".into(), json!(said)); Ok(o)
+        }
         // A new coordinator, on what its settings say now (the CLI's `coordinator new`): its level is the panel's `to`.
         "coordinator-new" => {
             if !drive { return watch(); }

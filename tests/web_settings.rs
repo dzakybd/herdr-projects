@@ -123,3 +123,19 @@ fn a_new_coordinator_is_asked_for_only_for_a_level_of_this_machine_and_never_by_
     assert!(web_as(&w, "test", "coordinator-new", json!({ "to": "../../x" })).unwrap_err().contains("no coordinator"));
     assert!(web_as(&w, "test", "coordinator-new", json!({ "to": "machine", "role": "watch" })).unwrap_err().contains("only watch"));
 }
+
+#[test]
+fn an_account_is_set_for_several_repos_at_once_and_the_reviewer_is_put_on_claude_where_it_ran_another_program() {
+    let w = world();
+    let id = w.add("Look into the logs");
+    std::fs::create_dir_all(sw::store::files::user_home().join(".claude-accounts/work")).unwrap();
+    let go = |args: Value| web_as(&w, "test", "apply-account", args);
+    assert!(go(json!({ "account": "nope", "roles": ["worker"], "repos": ["proj"] })).unwrap_err().contains("no account"));
+    assert!(go(json!({ "account": "work", "roles": [], "repos": ["proj"] })).unwrap_err().contains("at least one role"));
+    assert!(go(json!({ "account": "work", "roles": ["worker"], "repos": ["elsewhere"] })).unwrap_err().contains("No repo named"));
+    assert!(go(json!({ "account": "work", "roles": ["worker"], "repos": ["proj"], "role": "watch" })).unwrap_err().contains("only watch"));
+    let said = go(json!({ "account": "work", "roles": ["worker", "reviewer"], "repos": ["proj"], "claude": true })).unwrap().s("said").to_string();
+    assert!(said.contains("Set work for worker, reviewer on 1 repo") && said.contains("proj reviewer"), "{said}");
+    let s = web(&w, "pick", json!({ "id": id, "open": true }));
+    assert_eq!((row(&s, "worker.account").s("value"), row(&s, "reviewer.account").s("value"), row(&s, "reviewer.agent").s("value")), ("work", "work", "claude"));
+}

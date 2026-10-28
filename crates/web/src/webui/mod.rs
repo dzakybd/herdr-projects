@@ -7,6 +7,7 @@
 // Built in sw-flow, which uses them too (crates/flow/src/webui/): where the web UI is, its PCs and link, the front
 // door started from outside.
 pub use sw_flow::webui::{command, find, keep, link, pcs, proxy};
+pub mod apply;
 pub mod attach;
 pub mod boards;
 pub mod dock;
