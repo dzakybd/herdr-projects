@@ -250,3 +250,17 @@ fn a_folder_is_trusted_in_the_config_of_the_account_the_role_runs_under() {
     let other = w.base.join("other-folder");
     assert!(!sw::agents::installed::pre_trust("claude", &other, "ask", "trusting"));
 }
+
+#[test]
+fn trust_folders_board_trusts_a_board_owned_folder_under_ask_and_ask_does_not() {
+    let w = world();
+    let acc = user_home().join(".claude-accounts/trusting");
+    std::fs::create_dir_all(&acc).unwrap();
+    let folder = w.base.join("task-folder");
+    std::fs::create_dir_all(&folder).unwrap();
+    let trusted = || std::fs::read_to_string(acc.join(".claude.json")).ok().and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok()).map(|j| j["projects"][folder.display().to_string()]["hasTrustDialogAccepted"] == json!(true)).unwrap_or(false);
+    assert_eq!(sw::store::settings::lookup::setting_text("trust.folders", None), "board", "the default");
+    assert!(!sw::agents::installed::pre_trust_owned("claude", &folder, "ask", "trusting", "ask") && !trusted(), "ask: nothing under access ask");
+    assert!(sw::agents::installed::pre_trust_owned("claude", &folder, "ask", "trusting", "board") && trusted(), "board: trusted in the account's own file");
+    assert!(sw::agents::installed::pre_trust_owned("claude", &folder, "full", "trusting", "ask"), "ask still trusts under full access");
+}

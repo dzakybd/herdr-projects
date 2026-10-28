@@ -54,7 +54,7 @@ pub fn start_agent(id: &str, g: &mut Guard, prompt: &str, resume: Option<&str>) 
     let model = if took.kind == kind { took.model } else if who.kind == kind { who.model.clone() } else { String::new() };
     let level = start::effort_for(&kind, &model, &who.effort);
     let root = if t.b("root") { PathBuf::from(t.s("root")) } else { folder_of(t.s("id")) };
-    installed::pre_trust(&kind, &root, &who.access, &who.account);
+    installed::pre_trust_owned(&kind, &root, &who.access, &who.account, w.s("trust.folders"));
     let taken: Vec<String> = api.agents().unwrap_or_default().iter().filter(|a| a.s("pane_id") != t.at("link").s("pane")).map(|a| a.t("name")).filter(|n| !n.is_empty()).collect();
     let name = agent_name(&t, &taken);
     if plan::planner(&t) { flow::tabs::name_tab(&api, t.at("link").s("tab"), flow::tabs::PLANNER_TAB); } else { flow::tabs::name_agent_tab(&api, t.at("link").s("tab"), Some(&t)); }

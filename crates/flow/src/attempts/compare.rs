@@ -93,7 +93,7 @@ fn compare(id: &str, g: &mut Guard, t: &Task) -> Res<Obj> {
     let writes = is_research(t) && t.at("comparing").s("pick") == "reviewer";
     let brief = format!("{}\n\n{}{}", task_line_as(t, "reviewer", 0), compare_brief(t, &passed, writes), if who.instructions.is_empty() { String::new() } else { format!("\n\n{}", start::own_words(&who.instructions)) });
     let cwd = passed.first().map(|c| c.t("worktree")).filter(|w| !w.is_empty() && Path::new(w).exists()).map(PathBuf::from).unwrap_or_else(|| folder_of(t.s("id")));
-    installed::pre_trust(&k, &folder_of(t.s("id")), &who.access, &who.account);
+    installed::pre_trust_owned(&k, &folder_of(t.s("id")), &who.access, &who.account, ch.s("trust.folders"));
     close_picker(id);
     let ws = t.at("link").t("workspace");
     let err = |e: &str| Ok(obj(json!({ "error": e, "by": k })));

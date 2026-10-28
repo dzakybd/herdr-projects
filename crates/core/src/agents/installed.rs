@@ -75,7 +75,11 @@ pub fn full_access(k: &str, access: &str) -> bool { access != "ask" || kind(k).m
 pub fn interrupt_key(k: &str) -> &'static str { kind(k).map(|a| a.interrupt).unwrap_or("esc") }
 /// Best effort: a failure here only means the agent's own trust dialog shows, which the inbox handles.
 /// The folder trusted before the program starts there, in the account the role runs under (`<role>.account`) where it has one.
-pub fn pre_trust(k: &str, root: &Path, access: &str, account: &str) -> bool {
-    if !(adapter::can_trust(k) && full_access(k, access)) { return false; }
+pub fn pre_trust(k: &str, root: &Path, access: &str, account: &str) -> bool { pre_trust_owned(k, root, access, account, "ask") }
+/// The same for a folder the board itself made or owns for the task or the role (its folder, a reviewer's or picker's
+/// folder, a coordinator's chat folder). `folders` is `trust.folders`: `board` trusts it under any access (only the
+/// trust-folder dialog goes, never a tool permission), `ask` only under full access, as `pre_trust` does.
+pub fn pre_trust_owned(k: &str, root: &Path, access: &str, account: &str, folders: &str) -> bool {
+    if !(adapter::can_trust(k) && (folders == "board" || full_access(k, access))) { return false; }
     match super::account::folder(account).filter(|_| k == "claude") { Some(d) => adapter::trust_in(k, root, Some(d.join(".claude.json"))), None => adapter::trust(k, root) }
 }

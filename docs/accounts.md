@@ -87,3 +87,18 @@ and the calls behind it (`accounts`, `account-save`) refuse it.
 
 The Accounts card's lists read the folders and `ACCOUNT_MODELS` at every look, so a saved account and its models are
 offered at once, with no restart.
+
+## Trust
+
+Claude Code asks "do you trust this folder?" the first time it starts in one, and remembers the answer in the account's
+own `.claude.json`. `trust.folders` says whether the board answers it for you:
+
+- `board` (the default): the board marks as trusted the folders it makes or owns for a task or a role, and only those:
+  the task's folder, a reviewer's or picker's folder, and a Coordinator's chat folder. It writes them into the
+  `.claude.json` of the account the role runs under, and does it under any access, so a role on `ask` is no longer
+  asked once per task or per account. Any other folder is never trusted by the board.
+- `ask`: the board marks a folder as trusted only for a role on access `full` or `auto`, as it used to. A role on
+  `ask` is asked for each folder.
+
+This is only the folder dialog. What an agent may do without asking, `<role>.access`, is not changed: on `ask`, it
+still asks before each action. Set it like any setting: `herdr-projects set trust.folders ask --repo my-app`.
