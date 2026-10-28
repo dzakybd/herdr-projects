@@ -1,14 +1,17 @@
 //! `<role>.access auto` (HP-78): each program's own auto mode, refused for a program that has none and for a version
-//! older than its first, never let fall to `full` or `ask`; `full` and `ask` as they were.
+//! older than its first, never let fall to `full` or `ask`; `full` and `ask` as they were. And `<role>.account`: the Claude
+//! config folder from a name or a path, refused where the folder is missing, nothing for a program without accounts.
 use crate::common;
 use common::*;
 use serde_json::json;
 use sw::json::*;
 use sw::agents::access::{too_old, why_not};
+use sw::agents::account::{export_line, folder};
 use sw::agents::start::{start_args, StartOpts};
 use sw::finish::hand_over::usable;
 use sw::store::handovers::next_fallback;
 use sw::store::settings::change::set_value;
+use sw::store::files::user_home;
 use sw::store::settings::lookup::Scope;
 
 fn with(access: &str) -> StartOpts { StartOpts { access: access.into(), ..Default::default() } }
@@ -155,4 +158,32 @@ fn on_the_settings_page_the_access_row_passes_over_a_value_its_program_cannot_do
     b.press(&["enter"]);
     // opencode can ask but has no auto mode: from ask it goes on to full, never stuck on ask.
     assert_eq!(sw::store::settings::lookup::setting("worker.access", Some(&task(&id))), json!("full"));
+}
+
+#[test]
+fn a_name_is_a_folder_of_claude_accounts_and_a_path_is_itself() {
+    let _w = world();
+    assert_eq!(folder("work"), Some(user_home().join(".claude-accounts/work")));
+    assert_eq!(folder("~/acc/work"), Some(user_home().join("acc/work")));
+    assert_eq!(folder("/srv/acc"), Some(std::path::PathBuf::from("/srv/acc")));
+    assert_eq!(folder("none"), None);
+    assert_eq!(folder("  "), None);
+}
+
+#[test]
+fn claude_gets_the_folder_and_label_and_an_unknown_folder_is_refused() {
+    let w = world();
+    let dir = w.base.join("acc-one");
+    std::fs::create_dir_all(&dir).unwrap();
+    let line = export_line("claude", dir.to_str().unwrap()).unwrap().unwrap();
+    assert!(line.starts_with(" export CLAUDE_CONFIG_DIR=") && line.contains("CLAUDE_ACCOUNT_LABEL='acc-one'"), "{line}");
+    let missing = export_line("claude", w.base.join("nope").to_str().unwrap()).unwrap_err().msg;
+    assert!(missing.contains("has no folder"), "{missing}");
+}
+
+#[test]
+fn no_account_and_other_programs_export_nothing() {
+    let w = world();
+    assert_eq!(export_line("claude", "none").unwrap(), None);
+    assert_eq!(export_line("codex", w.base.to_str().unwrap()).unwrap(), None);
 }

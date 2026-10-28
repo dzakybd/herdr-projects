@@ -20,11 +20,11 @@ fn choice_with(scope: &Scope) -> Option<Obj> {
     let who = role_of("coordinator", &|n| lookup(n, scope, &mine).map(|f| f.value).unwrap_or(Value::Null));
     if who.kind.is_empty() { return None; }
     let mut c = obj(json!({ "kind": who.kind, "model": who.model, "effort": effort_for(&who.kind, &who.model, &who.effort) }));
-    extra(&mut c, who.fast, &who.access);
+    extra(&mut c, who.fast, &who.access, &who.account);
     Some(c)
 }
-/// Fast mode and asking first are part of who it is only where they are not the usual.
-fn extra(c: &mut Obj, fast: bool, access: &str) { if fast { c.put("fast", true); } if !access.is_empty() && access != "full" { c.put("access", access); } }
+/// Fast mode, asking first and an account are part of who it is only where they are not the usual.
+fn extra(c: &mut Obj, fast: bool, access: &str, account: &str) { if fast { c.put("fast", true); } if !access.is_empty() && access != "full" { c.put("access", access); } if crate::agents::account::folder(account).is_some() { c.put("account", account.trim()); } }
 pub const OFF_WORDS: &str = "The Coordinator is off. `herdr-projects unset coordinator.agent` turns it on.";
 /// A choice for one Coordinator only ("new, on codex"): what is named wins, and a model or effort set for another
 /// program is not passed on to it.
@@ -39,14 +39,14 @@ pub fn pick_of(agent: &str, effort: &str) -> Res<Option<Obj>> {
     let on = if model.is_empty() { kind.clone() } else { format!("{kind}/{model}") };
     let level = if !effort.is_empty() { text(&check("coordinator.effort", &json!(effort), &on)?) } else if same { base.t("effort") } else { String::new() };
     let mut c = obj(json!({ "kind": kind, "model": model, "effort": effort_for(&kind, &model, &level) }));
-    extra(&mut c, base.b("fast"), base.s("access"));
+    extra(&mut c, base.b("fast"), base.s("access"), base.s("account"));
     Ok(Some(c))
 }
 pub fn describe(k: Option<&Obj>) -> String {
     match k { Some(k) => format!("{} · {} · {}", k.s("kind"), if k.b("model") { k.s("model") } else { "default model" }, if k.b("effort") { k.s("effort") } else { "default effort" }), None => "off".into() }
 }
 pub fn same_choice(a: &Obj, b: &Obj) -> bool {
-    a.s("kind") == b.s("kind") && a.s("model") == b.s("model") && a.s("effort") == b.s("effort") && a.b("fast") == b.b("fast") && (if a.b("access") { a.s("access") } else { "full" }) == (if b.b("access") { b.s("access") } else { "full" })
+    a.s("kind") == b.s("kind") && a.s("model") == b.s("model") && a.s("effort") == b.s("effort") && a.b("fast") == b.b("fast") && (if a.b("access") { a.s("access") } else { "full" }) == (if b.b("access") { b.s("access") } else { "full" }) && a.s("account") == b.s("account")
 }
 /// Can the box talk to a Coordinator here? It needs a running herdr to live in, and its program installed.
 pub fn ready(socket: &str) -> bool {

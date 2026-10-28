@@ -46,14 +46,14 @@ pub fn too_new(k: &str) -> Vec<&'static str> {
     let v = super::installed::version_of(k);
     a.since.iter().filter(|(_, first)| !v.is_empty() && !super::installed::at_least(&v, first)).map(|(arg, _)| *arg).collect()
 }
-/// What a role is started as, from its five settings.
+/// What a role is started as, from its six settings.
 #[derive(Clone, Debug, Default)]
-pub struct Role { pub kind: String, pub model: String, pub effort: String, pub fast: bool, pub access: String, pub instructions: String }
+pub struct Role { pub kind: String, pub model: String, pub effort: String, pub fast: bool, pub access: String, pub account: String, pub instructions: String }
 pub fn role_of(role: &str, get: &dyn Fn(&str) -> Value) -> Role {
     let v = text(&get(&format!("{role}.agent")));
     let (k, model) = if v == "none" { (String::new(), String::new()) } else { match v.split_once('/') { Some((a, b)) => (a.to_string(), b.to_string()), None => (v.clone(), String::new()) } };
     let words = text(&get(&format!("{role}.instructions")));
-    Role { kind: k, model, effort: text(&get(&format!("{role}.effort"))), fast: get(&format!("{role}.fast")) == json!(true), access: text(&get(&format!("{role}.access"))),
+    Role { kind: k, model, effort: text(&get(&format!("{role}.effort"))), fast: get(&format!("{role}.fast")) == json!(true), access: text(&get(&format!("{role}.access"))), account: text(&get(&format!("{role}.account"))),
         instructions: if words.is_empty() || words == "none" { String::new() } else { words } }
 }
 /// Your own words for a role, as they are added after the board's own fixed rules.

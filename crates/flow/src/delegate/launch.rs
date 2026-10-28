@@ -49,7 +49,7 @@ pub fn start_agent(id: &str, g: &mut Guard, prompt: &str, resume: Option<&str>) 
     // The worker's settings, read now, as it starts. A planner of its own runs on its own program and model.
     let w = work(Some(&t));
     let worker = start::role_of("worker", &|n| w.at(n).clone());
-    let who = if plan::planner(&t) { let wr = t.at("plan").at("writer"); start::Role { kind: wr.t("kind"), model: wr.t("model"), effort: String::new(), fast: false, access: worker.access.clone(), instructions: worker.instructions.clone() } } else { worker.clone() };
+    let who = if plan::planner(&t) { let wr = t.at("plan").at("writer"); start::Role { kind: wr.t("kind"), model: wr.t("model"), effort: String::new(), fast: false, access: worker.access.clone(), account: worker.account.clone(), instructions: worker.instructions.clone() } } else { worker.clone() };
     let took = agent_of(if plan::planner(&t) { "" } else { t.s("on") });
     let model = if took.kind == kind { took.model } else if who.kind == kind { who.model.clone() } else { String::new() };
     let level = start::effort_for(&kind, &model, &who.effort);
@@ -70,6 +70,7 @@ pub fn start_agent(id: &str, g: &mut Guard, prompt: &str, resume: Option<&str>) 
     // Its temporary folder, as TMPDIR and the rest: removed with all in it when the task ends (temp.rs).
     let tmp = crate::temp::made(&t);
     let _ = api.pane_run(&pane, &crate::temp::export_line(&t));
+    if let Some(line) = crate::agents::account::export_line(&kind, &who.account)? { let _ = api.pane_run(&pane, &line); }
     let mut start_with = |with_hook: bool| -> Res<()> {
         // In a read-only mount while its plan waits (plan/sandbox.rs).
         match plan::sandbox::start_program(&api, &t, &name, &kind, &pane, &args(with_hook)?, "writer") {

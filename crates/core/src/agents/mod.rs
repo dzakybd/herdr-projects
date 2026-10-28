@@ -1,6 +1,7 @@
 //! Everything agent-specific: the table of agent programs (kinds.rs and adapter.rs), reading what they saved,
 //! starting them, and what is installed. One area per file.
 pub mod access;
+pub mod account;
 pub mod adapter;
 pub mod codex_trust;
 pub mod efforts;

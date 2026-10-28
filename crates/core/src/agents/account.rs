@@ -1,0 +1,27 @@
+//! `<role>.account`: the Claude Code account a role's agent runs under, given to its pane as the config folder.
+use crate::err::Res;
+use crate::store::files::user_home;
+use std::path::PathBuf;
+
+/// The folder of accounts a bare name is looked for in, under the user's home.
+const ACCOUNTS: &str = ".claude-accounts";
+
+/// The config folder an account names: a path (`~/work-account`, or an absolute one), or a bare name, which is a
+/// folder of `~/.claude-accounts/`. None for `none` or an empty value.
+pub fn folder(account: &str) -> Option<PathBuf> {
+    let a = account.trim();
+    if a.is_empty() || a.eq_ignore_ascii_case("none") { return None; }
+    if let Some(rest) = a.strip_prefix("~/") { return Some(user_home().join(rest)); }
+    if a.contains('/') { return Some(PathBuf::from(a)); }
+    Some(user_home().join(ACCOUNTS).join(a))
+}
+/// The line that gives a pane's shell the account, before the program starts there (a leading space keeps it out of
+/// the shell's history where that is set). None where no account is set or the program is not Claude Code, which is
+/// the only one with accounts of this kind. A folder that is not there is refused: a typo would otherwise start a
+/// new, logged-out account.
+pub fn export_line(kind: &str, account: &str) -> Res<Option<String>> {
+    let Some(dir) = folder(account).filter(|_| kind == "claude") else { return Ok(None) };
+    if !dir.is_dir() { crate::fail!("the account \"{}\" has no folder {}. Set the role's account to another, or none.", account.trim(), dir.display()); }
+    let label = dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    Ok(Some(format!(" export CLAUDE_CONFIG_DIR={} CLAUDE_ACCOUNT_LABEL={}", crate::util::shq(&dir.display().to_string()), crate::util::shq(&label))))
+}
