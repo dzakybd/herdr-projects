@@ -1,6 +1,7 @@
 //! Telling you that a task needs you, is ready to approve, or failed: the `board.notify` setting. `bell` rings the
-//! terminal bell where a board is open; a command is run once per event, with the task's id, its title and what
-//! happened in its environment; `none` does neither.
+//! terminal bell where a board is open; `mac` is a macOS notification (`osascript`, the text handed over as arguments,
+//! never put into the script); a command is run once per event, with the task's id, its title and what happened in
+//! its environment; `none` does nothing.
 use crate::clock::now;
 use crate::json::*;
 use crate::store::attempts::attempts_of;
@@ -18,6 +19,23 @@ pub fn event_of(t: &Obj) -> &'static str {
     ""
 }
 fn noted(t: &Obj, event: &str) -> bool { t.at("notice").s("event") == event && (event.is_empty() || t.at("notice").s("stage") == t.s("stage")) }
+/// The script of the `mac` notification: the task's title and the event are its two arguments, never part of its text.
+const MAC_SCRIPT: [&str; 3] = ["on run argv", "display notification (item 1 of argv) with title \"Herdr board\" subtitle (item 2 of argv)", "end run"];
+/// What `osascript` is run with: the script, then (after `--`, so a title that starts with `-` is no option) the two
+/// arguments, as they are.
+pub fn mac_args(title: &str, event: &str) -> Vec<String> {
+    MAC_SCRIPT.iter().flat_map(|l| ["-e".to_string(), l.to_string()]).chain(["--".to_string(), title.to_string(), event.to_string()]).collect()
+}
+/// A macOS notification, started and left to run (as `detached_sh`; no shell is in between). Kept for the test when tests run inline.
+fn mac(env: &[(&str, String)]) {
+    use crate::runner::{detach, inline, start_reaped, user_env, JOBS};
+    if inline() { JOBS.with(|j| j.borrow_mut().push(("notify".into(), "mac".into(), env.iter().map(|(k, v)| format!("{k}={v}")).collect()))); return; }
+    user_env();
+    let mut c = std::process::Command::new("osascript");
+    c.args(mac_args(&env[1].1, &env[2].1)).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
+    detach(&mut c);
+    start_reaped(&mut c);
+}
 /// The housekeeping pass: each event is noted on its task once (`notice`), and the command is run for it.
 pub fn notify_pass(tasks: &[Obj]) {
     let how = setting_text("board.notify", None);
@@ -33,6 +51,6 @@ pub fn notify_pass(tasks: &[Obj]) {
         }) else { continue };
         if !fresh || how == "none" || how == "bell" { continue; }
         let env = [("HERDR_PROJECTS_ID", t.t("id")), ("HERDR_PROJECTS_TITLE", t.t("title")), ("HERDR_PROJECTS_EVENT", t.at("notice").t("event"))];
-        crate::runner::detached_sh(&how, &env);
+        if how == "mac" { mac(&env); } else { crate::runner::detached_sh(&how, &env); }
     }
 }

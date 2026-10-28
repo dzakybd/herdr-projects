@@ -24,7 +24,7 @@ pub fn row_of(s: &State, t: &Theme, r: &Obj, now: i64) -> Value {
         "says": pieces(&sentence(r)), "progress": if live { json!(r.f("progress").clamp(0.0, 100.0)) } else { Value::Null },
         "percent": f.percent.text().trim(), "eta": f.eta.text(), "review": pieces(&f.review), "pr": pieces(&f.pr), "prUrl": crate::review_page::render::web_url(r.s("pr")),
         "time": format!("{}{}", f.elapsed, if f.ago { " ago" } else { "" }), "quiet": (r.s("state") == "done"),
-        "pinned": r.b("pinned"), "archived": r.b("archivedAt"), "app": r.s("app"), "made": r.at("automation").b("id"), // `made`: by an automation (its [auto] tag is dimmed, as every tag is)
+        "pinned": r.b("pinned"), "archived": r.b("archivedAt"), "app": r.s("app"), "made": r.at("automation").b("id"), "event": crate::notify::event_of(r), // `made`: by an automation (its [auto] tag is dimmed, as every tag is)
     })
 }
 /// One automation's row, in a task row's places: the word on or off where a task has its number, its trigger (and why
