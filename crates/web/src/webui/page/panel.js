@@ -44,26 +44,45 @@ export function panelEl(snap, handlers) {
 // ---- All settings ------------------------------------------------------------------------------------------------------
 // Folded until asked for; it stays as you left it while the page is kept fresh.
 let unfolded = false, shown = 0;
+// One setting's control: one of a few words is picked, anything else is typed (saved when you press enter or leave the box,
+// and only when it says something new).
+function control(x, canSet, onSet) {
+  return x.words ? h("select.sw-set-pick", { "aria-label": x.label, disabled: !canSet, onchange: (e) => onSet(x.name, e.target.value) },
+    x.words.map((w) => h("option", { value: w.value, selected: w.now }, w.say)))
+    : h("input.sw-set-box", { type: "text", value: x.value, "aria-label": x.label, title: x.hint, placeholder: x.hint, disabled: !canSet, autocomplete: "off", spellcheck: false,
+      onchange: (e) => { const text = e.target.value.trim(); if (text && text !== x.value) onSet(x.name, text); else e.target.value = x.value; } });
+}
+const putBack = (x, onSet) => h("button.sw-set-back", { type: "button", title: "Back to what it would be without its own answer", onclick: () => onSet(x.name, null) }, icon("undo"), "Put back");
 function setRow(x, whose, canSet, onSet) {
-  const pick = x.words && h("select.sw-set-pick", { "aria-label": x.label, disabled: !canSet, onchange: (e) => onSet(x.name, e.target.value) },
-    x.words.map((w) => h("option", { value: w.value, selected: w.now }, w.say)));
-  // Typed: saved when you press enter or leave the box, and only when it says something new.
-  const box = !x.words && h("input.sw-set-box", { type: "text", value: x.value, "aria-label": x.label, title: x.hint, placeholder: x.hint, disabled: !canSet, autocomplete: "off", spellcheck: false,
-    onchange: (e) => { const text = e.target.value.trim(); if (text && text !== x.value) onSet(x.name, text); else e.target.value = x.value; } });
   return h(`div.sw-set${x.own ? ".is-own" : ""}`,
-    h("div.sw-set-top", h("span.sw-set-label", x.label), pick || box),
+    h("div.sw-set-top", h("span.sw-set-label", x.label), control(x, canSet, onSet)),
     x.means ? h("p.sw-set-means", x.words ? `On: ${x.means}.` : `Means: ${x.means}.`) : null, // a typed value has no "on": what it is
     h("p.sw-set-from", [x.own ? `* ${whose} only` : "", x.from].filter(Boolean).join(" · "), h("span.sw-set-name", `${x.own || x.from ? " · " : ""}${x.name}`),
-      x.own && canSet ? h("button.sw-set-back", { type: "button", title: "Back to what it would be without its own answer", onclick: () => onSet(x.name, null) }, "Put back") : null));
+      x.own && canSet ? putBack(x, onSet) : null));
+}
+// Which Claude account runs each role: stood out at the top, where a phone does not scroll past eighty rows to find it.
+const ROLES = { worker: ["Agent", "user"], reviewer: ["Reviewer", "eye"], coordinator: ["Coordinator", "board"] };
+const KINDS = { default: ["key", "The account herdr itself runs under"], login: ["user", "A Claude login"], gateway: ["cloud", "Gateway: own base URL and model"], missing: ["close", "No such account folder: its agent will not start"] };
+// A changed one has its label in bold; the heading says for whom.
+function accountsEl(rows, whose, canSet, onSet) {
+  const row = (x) => {
+    const [label, ic] = ROLES[x.name.split(".")[0]] || [x.label, "user"];
+    const now = x.words?.find((w) => w.now)?.value ?? x.value, [kic, say] = KINDS[x.tags?.[now]] || KINDS.login;
+    return h(`div.sw-acct${x.own ? ".is-own" : ""}`,
+      h("div.sw-acct-top", h("span.sw-acct-label", icon(ic), label), control(x, canSet, onSet)),
+      h("p.sw-set-from.sw-acct-tag", h("span.sw-acct-say", icon(kic), h("span", say)), x.own && canSet ? putBack(x, onSet) : null));
+  };
+  return h("section.sw-accounts", h("h4.sw-accounts-head", icon("user"), "Accounts", h("span.sw-settings-note", `which Claude account runs each role, for ${whose}`)), rows.map(row));
 }
 export function settingsEl(snap, { onSet }) {
   const s = snap.settings;
   if (!s || !s.rows.length) return null;
   if (s.show !== shown) { if (s.show > shown && shown >= 0) unfolded = true; shown = s.show; }
   const set = (name, value) => onSet(s.id, name, value);
+  const accounts = s.rows.filter((x) => x.name.endsWith(".account")), rest = s.rows.filter((x) => !x.name.endsWith(".account"));
   const el = h("details.sw-settings", { open: unfolded, ontoggle: (e) => { unfolded = e.target.open; } },
     h("summary.sw-settings-head", "All settings", h("span.sw-settings-note", `${s.rows.filter((x) => x.own).length} of ${s.whose.endsWith("s") ? s.whose + "'" : s.whose + "'s"} own`)),
     h("p.sw-set-means", s.canSet ? `Every setting. A change here is for ${s.whose} only, and marked *.` : "Read-only here."),
-    s.rows.map((x) => setRow(x, s.whose, s.canSet, set)));
-  return el;
+    rest.map((x) => setRow(x, s.whose, s.canSet, set)));
+  return h("div.sw-settings-wrap", accounts.length ? accountsEl(accounts, s.whose, s.canSet, set) : null, el);
 }

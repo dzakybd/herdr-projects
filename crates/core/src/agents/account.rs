@@ -16,6 +16,11 @@ pub fn folder(account: &str) -> Option<PathBuf> {
     if a.contains('/') { return Some(PathBuf::from(a)); }
     Some(user_home().join(ACCOUNTS).join(a))
 }
+/// What an account is, for the page to say: `default` (none: what herdr itself runs under), `gateway` (its folder has an
+/// `account.env`: its own base URL and model), `login` (a Claude login), `missing` (no such folder).
+pub fn kind_of(account: &str) -> &'static str {
+    match folder(account) { None => "default", Some(d) if !d.is_dir() => "missing", Some(d) if d.join("account.env").is_file() => "gateway", Some(_) => "login" }
+}
 /// What the settings page offers for `<role>.account`: `none`, then each account folder of `~/.claude-accounts/` by its
 /// name, in order.
 pub fn choices() -> Vec<String> {

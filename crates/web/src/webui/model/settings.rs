@@ -14,7 +14,9 @@ fn row_of(x: &Obj) -> Value {
     let mut words = words_of(x.s("name"));
     if let Some(ws) = words.as_mut() { if x.s("name").ends_with(".account") && !ws.contains(x.at("value")) { ws.push(x.at("value").clone()); } }
     let from = [x.t("note"), x.t("later")].into_iter().filter(|w| !w.is_empty()).collect::<Vec<_>>().join(" · ");
-    json!({
+    // An account says what it is (a login, or a gateway of its own), for the page to show beside the choice.
+    let tags: Option<serde_json::Map<String, Value>> = words.as_ref().filter(|_| x.s("name").ends_with(".account")).map(|ws| ws.iter().map(|w| (text(w), json!(crate::agents::account::kind_of(&text(w))))).collect());
+    let mut row = json!({
         "name": x.s("name"), "label": e.map(|e| e.label.to_string()).filter(|l| !l.is_empty()).unwrap_or_else(|| x.t("name")), "means": e.map(|e| e.means.to_string()).unwrap_or_default(), "own": x.b("own"),
         "value": crate::re!(r"\s*\n\s*").replace_all(&value_say(x.at("value")), " / "),
         // What a reader must know of it: why it does nothing here, or that it counts later. Never where it comes from.
@@ -22,7 +24,9 @@ fn row_of(x: &Obj) -> Value {
         // One of a few words: the page offers them. Anything else is typed, and `hint` says what it may be.
         "words": words.as_ref().map(|ws| ws.iter().map(|w| json!({ "value": text(w), "say": value_say(w), "now": w == x.at("value") })).collect::<Vec<_>>()),
         "hint": if words.is_some() { String::new() } else { crate::board::view::panel::page::value_words(x) },
-    })
+    });
+    if let Some(t) = tags { row["tags"] = json!(t); }
+    row
 }
 /// Your settings, or your entry for a repo, for the heading that is open: the rows of the terminal board's page for it
 /// (`whose_here`), read now. Null for a heading of another machine, whose are changed there.
