@@ -139,6 +139,9 @@ fn an_account_is_set_for_several_repos_at_once_and_the_reviewer_is_put_on_claude
     assert!(said.contains("Set work for worker, reviewer on 1 repo") && said.contains("proj reviewer"), "{said}");
     let s = web(&w, "pick", json!({ "id": id, "open": true }));
     assert_eq!((row(&s, "worker.account").s("value"), row(&s, "reviewer.account").s("value"), row(&s, "reviewer.agent").s("value")), ("work", "work", "claude"));
+}
+
+#[test]
 fn accounts_are_listed_made_and_changed_on_the_page_the_cards_lists_follow_and_a_watcher_may_do_none_of_it() {
     let w = world();
     let id = w.add("A task");
