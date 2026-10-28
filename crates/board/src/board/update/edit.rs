@@ -21,6 +21,8 @@ pub fn value_say(v: &Value) -> String { match v { Value::Bool(true) => "on".into
 /// Values that are one of a few words are changed by going to the next one; every other value is typed.
 pub fn words_of(name: &str) -> Option<Vec<Value>> {
     let e = entry_of(name)?;
+    // One of the account folders there are; with none, a typed value (a path) is all there is to give.
+    if name.ends_with(".account") { let c = crate::agents::account::choices(); return if c.len() < 2 { None } else { Some(c.iter().map(|v| json!(v)).collect()) }; }
     match e.ty { Ty::Switch => Some(vec![json!(true), json!(false)]), Ty::Choice => Some(e.values.iter().map(|v| json!(v)).collect()), Ty::Access => Some(crate::agents::access::VALUES.iter().map(|v| json!(v)).collect()), _ => None }
 }
 /// The page's rows: a task's work settings (an automation's: what its next task will have; yours: every setting `show`
@@ -52,6 +54,11 @@ pub fn mine_open(s: &State) -> bool { s.full && s.editing.as_ref().map(|e| e.who
 /// groups' are yours, a repo's heading your entry for it. Another machine's are set on that machine: Err says so.
 pub fn whose_here(s: &State) -> Result<Whose, String> {
     if let Some(w) = super::edit_coord::whose_of(s) { return w; }
+    head_scope(s)
+}
+/// The same for a heading, whatever is at it: yours, or your entry for the repo of a repo's heading. The web page shows
+/// these under a coordinator too, where every setting is one list.
+pub fn head_scope(s: &State) -> Result<Whose, String> {
     let parts: Vec<&str> = s.sel.splitn(3, '\t').collect();
     if !super::heads::is_head(&s.sel) || parts.len() < 2 { return Ok(Whose::You); }
     if !parts[1].is_empty() { return Err(format!("Your settings on {0} are changed on {0} itself: herdr-projects set <name> <value> there.", parts[1])); }

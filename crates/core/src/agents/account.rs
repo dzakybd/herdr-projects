@@ -16,6 +16,14 @@ pub fn folder(account: &str) -> Option<PathBuf> {
     if a.contains('/') { return Some(PathBuf::from(a)); }
     Some(user_home().join(ACCOUNTS).join(a))
 }
+/// What the settings page offers for `<role>.account`: `none`, then each account folder of `~/.claude-accounts/` by its
+/// name, in order.
+pub fn choices() -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(user_home().join(ACCOUNTS)).into_iter().flatten().flatten()
+        .filter(|e| e.path().is_dir()).filter_map(|e| e.file_name().into_string().ok()).filter(|n| !n.starts_with('.')).collect();
+    names.sort();
+    std::iter::once("none".to_string()).chain(names).collect()
+}
 /// The line that gives a pane's shell the account, before the program starts there (a leading space keeps it out of
 /// the shell's history where that is set). An `account.env` in the folder is sourced after it, by the pane's own
 /// shell, so it may name variables that shell already has (`ANTHROPIC_AUTH_TOKEN=\"$MODEL_IQ_API_KEY\"`) and the board

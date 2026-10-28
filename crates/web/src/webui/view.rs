@@ -115,6 +115,18 @@ pub fn find(c: &mut Client, text: &str) {
 /// be without its own answer. The settings page's own save, so a task or an automation on another machine is changed
 /// there, and a refused value is refused in the same words.
 pub fn set_setting(c: &mut Client, id: &str, name: &str, value: Option<String>) -> Result<(), String> {
+    // Yours, or your entry for a repo, from the heading that is open: saved as the terminal board's page for it saves.
+    if crate::board::update::heads::is_head(id) {
+        if c.s.sel != id { c.s.flash("That heading is no longer the one that is open. Nothing was changed.", Ink::Yellow); return Ok(()); }
+        if crate::store::settings_list::entry_of(name).is_none() { return Err(format!("Unknown setting \"{name}\".")); }
+        let w = crate::board::update::edit::head_scope(&c.s)?;
+        let was = c.s.editing.replace(crate::board::state::Editing { id: id.into(), whose: w, ..Default::default() });
+        let mut fx: Vec<Effect> = vec![];
+        crate::board::update::edit::save(&mut c.s, name, value, &mut fx);
+        c.s.editing = was;
+        effects(c, fx, false);
+        return Ok(());
+    }
     let a = if c.s.auto_open { c.s.auto().cloned() } else { None };
     let r = a.clone().or_else(|| c.s.current().cloned());
     let Some(r) = r.filter(|r| (if a.is_some() { r.s("row") } else { r.s("id") }) == id && (a.is_some() || r.has("title"))) else { c.s.flash("That task is no longer the one that is open. Nothing was changed.", Ink::Yellow); return Ok(()) };

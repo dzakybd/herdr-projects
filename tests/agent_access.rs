@@ -198,3 +198,17 @@ fn no_account_and_other_programs_export_nothing() {
     assert_eq!(export_line("claude", "none").unwrap(), None);
     assert_eq!(export_line("codex", w.base.to_str().unwrap()).unwrap(), None);
 }
+
+#[test]
+fn the_account_setting_offers_none_and_each_account_folder_in_order() {
+    let w = world();
+    let _ = &w;
+    assert!(sw::board::update::edit::words_of("worker.account").is_none(), "with no account folder it is typed");
+    let accounts = user_home().join(".claude-accounts");
+    for n in ["work", "alt", ".hidden"] { std::fs::create_dir_all(accounts.join(n)).unwrap(); }
+    std::fs::write(accounts.join("not-a-folder"), "x").unwrap();
+    assert_eq!(sw::agents::account::choices(), ["none", "alt", "work"]);
+    let words = sw::board::update::edit::words_of("worker.account").unwrap();
+    assert_eq!(words.len(), 3);
+    assert!(sw::board::update::edit::words_of("worker.effort").is_none());
+}

@@ -62,7 +62,7 @@ export function settingsEl(snap, { onSet }) {
   if (s.show !== shown) { if (s.show > shown && shown >= 0) unfolded = true; shown = s.show; }
   const set = (name, value) => onSet(s.id, name, value);
   const el = h("details.sw-settings", { open: unfolded, ontoggle: (e) => { unfolded = e.target.open; } },
-    h("summary.sw-settings-head", "All settings", h("span.sw-settings-note", `${s.rows.filter((x) => x.own).length} of ${s.whose}'s own`)),
+    h("summary.sw-settings-head", "All settings", h("span.sw-settings-note", `${s.rows.filter((x) => x.own).length} of ${s.whose.endsWith("s") ? s.whose + "'" : s.whose + "'s"} own`)),
     h("p.sw-set-means", s.canSet ? `Every setting. A change here is for ${s.whose} only, and marked *.` : "Read-only here."),
     s.rows.map((x) => setRow(x, s.whose, s.canSet, set)));
   return el;
