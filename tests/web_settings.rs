@@ -245,3 +245,20 @@ fn a_login_is_a_gateway_by_its_account_env_and_a_gateway_a_login_again_only_when
     assert_eq!((kind_of("lg"), env.exists()), ("login", false));
     make_login("lg", false).unwrap();
 }
+
+#[test]
+fn the_chat_defaults_to_the_coordinator_of_the_repo_the_page_follows_and_a_row_picked_still_wins() {
+    let w = world();
+    w.add("A task");
+    web(&w, "board", json!({}));
+    let c = sw::webui::web::client("test");
+    { let g = c.lock().unwrap(); assert!(sw::board::update::coords::talking(&g.s).map(|t| t.to).unwrap_or_default().is_empty(), "before a repo is picked: the top-level one"); }
+    web(&w, "repo", json!({ "to": "proj" }));
+    let mut g = c.lock().unwrap();
+    g.s.data.can_dispatch = true;
+    assert_eq!(sw::board::update::coords::talking(&g.s).map(|t| t.to), Some("project:proj".to_string()));
+    // A heading picked to talk to is its own, not the repo's.
+    g.s.sel = sw::board::update::heads::machine_id("");
+    g.s.reply = true; g.s.reply_id = g.s.sel.clone();
+    assert_ne!(sw::board::update::coords::talking(&g.s).map(|t| t.to), Some("project:proj".to_string()));
+}

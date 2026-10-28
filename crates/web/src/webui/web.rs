@@ -84,6 +84,8 @@ pub fn save_prefs(s: &State) {
 }
 /// The repo new tasks go to from now on, kept for the web board and the tasks read again for it. Nothing when it is that already.
 fn set_repo(c: &mut Client, dir: String) {
+    // The chat follows too: its default is that repo's own coordinator (board/update/coords.rs: talking).
+    c.s.web.chat_repo = crate::store::repos::known_repos().iter().find(|(_, d)| text(d) == dir).map(|(n, _)| n.clone()).unwrap_or_default();
     if c.s.ctx.cwd == dir { return; }
     c.s.ctx.cwd = dir.clone();
     let mut p = crate::store::files::read_obj(&prefs_file()).unwrap_or_default();

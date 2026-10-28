@@ -56,6 +56,10 @@ pub fn of_head(s: &State, id: &str) -> Option<Target> {
 pub fn talking(s: &State) -> Option<Target> {
     if s.reply && is_head(&s.reply_id) && s.reply_id == s.sel { if let Some(t) = of_head(s, &s.sel) { return Some(t); } }
     if s.reply && s.reply_id == s.sel && s.current().is_some() { return None; }
+    // The web page follows a workspace: where the chat talks to no row's agent, it talks to that repo's own coordinator.
+    if s.ctx.web && !s.web.chat_repo.is_empty() && s.data.can_dispatch && !super::heads::archived_of(s, "").iter().any(|r| *r == s.web.chat_repo) {
+        return Some(Target { host: String::new(), to: format!("project:{}", s.web.chat_repo), name: super::top::coordinator_of(&super::heads::repo_shown(s, "", &s.web.chat_repo)) });
+    }
     super::top::top(s).filter(|t| !(t.host.is_empty() && t.to.is_empty()))
 }
 /// This machine's coordinator the board should read, as the coordinator code names its level ("" none): the one the
