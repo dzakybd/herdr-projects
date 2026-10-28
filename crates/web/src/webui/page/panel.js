@@ -64,13 +64,19 @@ function setRow(x, whose, canSet, onSet) {
 const ROLES = { worker: ["Agent", "user"], reviewer: ["Reviewer", "eye"], coordinator: ["Coordinator", "board"] };
 const KINDS = { default: ["key", "The account herdr itself runs under"], login: ["user", "A Claude login"], gateway: ["cloud", "Gateway: own base URL and model"], missing: ["close", "No such account folder: its agent will not start"] };
 // A changed one has its label in bold; the heading says for whom.
-function accountsEl(rows, whose, canSet, onSet) {
+function accountsEl(rows, models, whose, canSet, onSet) {
+  // Its model: one of the account's, or typed where the account names none. Its own is put back like the account's.
+  const model = (acct) => {
+    const m = models.find((y) => y.name.split(".")[0] === acct.name.split(".")[0]);
+    return m ? h(`div.sw-acct-model${m.own ? ".is-own" : ""}`, h("span.sw-acct-label", icon("cpu"), "Model"), control(m, canSet, onSet), m.own && canSet ? putBack(m, onSet) : null) : null;
+  };
   const row = (x) => {
     const [label, ic] = ROLES[x.name.split(".")[0]] || [x.label, "user"];
     const now = x.words?.find((w) => w.now)?.value ?? x.value, [kic, say] = KINDS[x.tags?.[now]] || KINDS.login;
     return h(`div.sw-acct${x.own ? ".is-own" : ""}`,
       h("div.sw-acct-top", h("span.sw-acct-label", icon(ic), label), control(x, canSet, onSet)),
-      h("p.sw-set-from.sw-acct-tag", h("span.sw-acct-say", icon(kic), h("span", say)), x.own && canSet ? putBack(x, onSet) : null));
+      h("p.sw-set-from.sw-acct-tag", h("span.sw-acct-say", icon(kic), h("span", say)), x.own && canSet ? putBack(x, onSet) : null),
+      model(x));
   };
   return h("section.sw-accounts", h("h4.sw-accounts-head", icon("user"), "Accounts", h("span.sw-settings-note", `which Claude account runs each role, for ${whose}`)), rows.map(row));
 }
@@ -79,10 +85,11 @@ export function settingsEl(snap, { onSet }) {
   if (!s || !s.rows.length) return null;
   if (s.show !== shown) { if (s.show > shown && shown >= 0) unfolded = true; shown = s.show; }
   const set = (name, value) => onSet(s.id, name, value);
-  const accounts = s.rows.filter((x) => x.name.endsWith(".account")), rest = s.rows.filter((x) => !x.name.endsWith(".account"));
+  const accounts = s.rows.filter((x) => x.name.endsWith(".account")), models = s.rows.filter((x) => x.name.endsWith(".model"));
+  const rest = s.rows.filter((x) => !x.name.endsWith(".account") && !x.name.endsWith(".model"));
   const el = h("details.sw-settings", { open: unfolded, ontoggle: (e) => { unfolded = e.target.open; } },
     h("summary.sw-settings-head", "All settings", h("span.sw-settings-note", `${s.rows.filter((x) => x.own).length} of ${s.whose.endsWith("s") ? s.whose + "'" : s.whose + "'s"} own`)),
     h("p.sw-set-means", s.canSet ? `Every setting. A change here is for ${s.whose} only, and marked *.` : "Read-only here."),
     rest.map((x) => setRow(x, s.whose, s.canSet, set)));
-  return h("div.sw-settings-wrap", accounts.length ? accountsEl(accounts, s.whose, s.canSet, set) : null, el);
+  return h("div.sw-settings-wrap", accounts.length ? accountsEl(accounts, models, s.whose, s.canSet, set) : null, el);
 }

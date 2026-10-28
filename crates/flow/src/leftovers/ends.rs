@@ -49,7 +49,13 @@ pub fn worktree(t: &Obj) -> Option<PathBuf> {
 fn gone(api: &Herdr, pane: &str) -> bool { matches!(api.call(crate::herdr::cli::args(&["pane", "get", pane])), Err(e) if e.code == "pane_not_found") }
 /// A process in words, and the folder it runs in.
 pub fn found_where(pid: i32) -> String {
-    match std::fs::read_link(format!("/proc/{pid}/cwd")).ok() { Some(d) => format!("{}, in {}", found(pid as i64), d.display()), None => found(pid as i64) }
+    match cwd_of(pid) { Some(d) => format!("{}, in {}", found(pid as i64), d.display()), None => found(pid as i64) }
+}
+/// The folder a process runs in: from /proc, and elsewhere (macOS has none) from `lsof`.
+fn cwd_of(pid: i32) -> Option<PathBuf> {
+    if let Ok(d) = std::fs::read_link(format!("/proc/{pid}/cwd")) { return Some(d); }
+    let o = std::process::Command::new("lsof").args(["-a", "-p", &pid.to_string(), "-d", "cwd", "-Fn"]).stderr(std::process::Stdio::null()).output().ok()?;
+    String::from_utf8_lossy(&o.stdout).lines().find_map(|l| l.strip_prefix('n')).map(PathBuf::from)
 }
 
 /// The task's panes as herdr says, and what runs from its folders, sorted.

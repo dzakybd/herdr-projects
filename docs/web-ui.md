@@ -123,7 +123,10 @@ dark and every palette of the web UI by itself.
 - There is one back arrow at a time: on a phone, the open task's stands for the Board's.
 - Nothing that is read is under 13 px, and everything that is tapped is at least 40 px high (the chat box's two send
   controls are the web UI's own sizes: 32 and 34 px with a mouse, 40 px on touch).
-- The header names the repo, with no folder path.
+- The header names the repo, with no folder path. With more than one repo known it is a list to pick from, and the board
+  follows the web UI's own page: click another workspace in its sidebar and the header, and where a new task goes,
+  move to that workspace's repo (a git repo not seen before is named then, as its first task would; the home folder and
+  a folder in no repo are left out). The choice is kept for the web board only.
 - Every [key](keys.md) of the board is a button or a menu entry, except the ones that belong to a terminal: closing the
   board's terminal, the `?` menu itself, the side panel, and the full screen (the page scrolls, and shows the list and the
   task side by side when it is wide enough). The chat's keys are its own controls (the switch, Hide and Show, Full

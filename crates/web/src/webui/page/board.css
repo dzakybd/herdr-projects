@@ -40,6 +40,7 @@
   border-bottom: var(--hairline, 1px) solid var(--sw-line); background: var(--sw-panel);
 }
 .sw-name { margin: 0; font-size: var(--fs-lg, 16px); font-weight: var(--fw-semibold, 600); color: var(--sw-strong); letter-spacing: var(--tracking-tight, -0.01em); }
+.sw-where-pick { max-width: 100%; min-height: var(--touch-target, 40px); padding: 0 var(--space-2, 8px); border: var(--hairline, 1px) solid var(--sw-line); border-radius: var(--radius-md, 8px); background: var(--sw-lift); color: var(--sw-text); font: inherit; }
 .sw-where { color: var(--sw-dim); font-size: var(--fs-xs, 12px); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sw-back { font-size: var(--fs-lg, 16px); }
 .sw-note { margin: 0; padding: var(--space-3, 12px) var(--space-4, 16px); color: var(--sw-dim); border-bottom: var(--hairline, 1px) solid var(--sw-line); }
@@ -131,7 +132,10 @@
 .sw-acct .sw-set-pick, .sw-acct .sw-set-box { flex: 1 1 9em; min-width: 0; max-width: 16em; }
 .sw-acct-tag { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2, 8px); }
 .sw-acct-say { display: inline-flex; align-items: center; gap: var(--space-2, 8px); min-width: 0; }
-.sw-acct-tag .sw-set-back { margin-left: auto; flex: none; }
+.sw-acct-tag .sw-set-back, .sw-acct-model .sw-set-back { margin-left: auto; flex: none; }
+.sw-acct-model { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3, 12px); padding-top: var(--space-1, 4px); }
+.sw-acct-model .sw-set-pick, .sw-acct-model .sw-set-box { flex: 1 1 9em; min-width: 0; max-width: 16em; }
+.sw-acct-model.is-own .sw-acct-label { color: var(--sw-strong); font-weight: var(--fw-semibold, 600); }
 .sw-part { margin-top: var(--space-4, 16px); }
 .sw-part-head { margin: 0 0 var(--space-2, 8px); padding-bottom: var(--space-1, 4px); border-bottom: var(--hairline, 1px) solid var(--sw-line); font-size: var(--fs-sm, 13px); font-weight: var(--fw-semibold, 600); color: var(--sw-strong); }
 .sw-part-head[class*="sw-c-"] { border-bottom-color: currentColor; }

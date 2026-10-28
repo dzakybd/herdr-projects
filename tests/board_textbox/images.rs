@@ -134,7 +134,8 @@ fn a_picture_among_words_in_one_paste_is_a_chip_and_the_words_stay() {
 #[test]
 fn a_picture_that_comes_as_keys_is_a_chip_too_also_right_after_another() {
     let w = world(); w.add("Some task");
-    let dir = w.base.join("desk");
+    // A short folder: a macOS temporary folder is so long that the escaped path would wrap in the 120 columns of the box.
+    let dir = std::path::PathBuf::from(format!("/tmp/sw-desk-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("Screen Shot.png"), b"x").unwrap();
     let shot = dir.join("Screen Shot.png").display().to_string().replace(' ', "\\ ");

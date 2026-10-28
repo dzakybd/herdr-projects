@@ -23,6 +23,7 @@ fn make_f(w: &World) -> String {
 #[test]
 fn the_web_board_shows_the_terminal_boards_list_and_one_task_whole() {
     let w = world();
+    sw::clock::set(Some(sw::clock::now())); // a second passing between two reads of "ago" is not what this test is about
     let id = make_f(&w);
     let mine = w.add("Write notes");
     sw::actions::filing::report(&mine, sw::actions::filing::Report { state: "working".into(), msg: "Drafting".into(), progress: Some(json!(40)), ..Default::default() }).unwrap();

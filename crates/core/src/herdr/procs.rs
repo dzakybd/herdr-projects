@@ -40,7 +40,13 @@ pub fn signal(pid: i64, sig: i32) -> bool {
 pub fn running(pid: i64) -> bool {
     if let Some(a) = super::cli::fake().and_then(|f| f.alive(pid)) { return a; }
     if !crate::store::files::pid_alive(pid) { return false; }
-    !std::fs::read_to_string(format!("/proc/{pid}/stat")).ok().and_then(|s| s.rfind(')').map(|i| s[i + 2..].starts_with('Z'))).unwrap_or(false)
+    !zombie(pid)
+}
+/// Has the process ended and only waits for its parent to read it: its state is `Z`, from /proc, and elsewhere (macOS has
+/// none) from `ps`.
+fn zombie(pid: i64) -> bool {
+    if let Ok(s) = std::fs::read_to_string(format!("/proc/{pid}/stat")) { return s.rfind(')').map(|i| s[i + 2..].starts_with('Z')).unwrap_or(false); }
+    Command::new("ps").args(["-o", "state=", "-p", &pid.to_string()]).output().map(|o| String::from_utf8_lossy(&o.stdout).trim().starts_with('Z')).unwrap_or(false)
 }
 /// A process's command line, where the system tells (`ps`).
 pub fn command(pid: i64) -> Option<String> {

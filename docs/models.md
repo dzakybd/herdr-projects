@@ -9,6 +9,8 @@ herdr-projects models            every program, a few names each, and its effort
 herdr-projects models codex      every name codex takes, written as a setting writes them, and its effort levels
 ```
 
+For Claude Code, a role's model can also be any name its **account** takes, a gateway's own among them: `<role>.model` ([accounts](accounts.md)).
+
 Every agent the board starts has a **program**, and if you want, a **model** and an **effort**. You choose them per role:
 the working agent (`worker.`), the reviewer (`reviewer.`), the Coordinator (`coordinator.`), the plan's writer (`plan.`),
 the Watcher (`watcher.`), and the lists that name agents (`worker.fallback`, `reviewer.fallback`, `attempts.by`).

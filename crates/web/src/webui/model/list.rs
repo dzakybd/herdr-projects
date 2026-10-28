@@ -105,6 +105,8 @@ pub fn list_of(s: &State, t: &Theme) -> Value {
             // The repo new tasks go to, by its name: no folder path, and nothing for the home folder.
             "where": if s.archive_view || s.data.repo_root == home { String::new() } else { s.data.repo.clone() },
             "whereKey": if s.archive_view || s.data.repo_root == home { String::new() } else { s.data.keys.get(&s.data.repo).cloned().unwrap_or_default() },
+            // Every repo the board knows, to pick the one new tasks go to (web.rs: the repo call).
+            "repos": repos_of(s),
             "session": if s.data.session == "default" { String::new() } else { s.data.session.clone() },
             "machines": if s.scope == "*" { let l: Vec<String> = crate::board::update::remotes::others(s).into_iter().map(|m| { let n = crate::board::update::remotes::shown(s, &m.machine.label); if m.ok { n } else { format!("{n} (no answer)") } }).collect(); if l.is_empty() { "no others found".to_string() } else { l.join(", ") } } else { String::new() },
             "only": if s.all() && s.scope != "*" { s.scope.clone() } else { String::new() }, "filter": s.filter, "host": crate::remote::check::hostname(), "version": crate::store::files::VERSION,
@@ -116,4 +118,10 @@ pub fn list_of(s: &State, t: &Theme) -> Value {
         "jobs": s.jobs.iter().map(|j| json!({ "id": j.s("id"), "text": j.s("text"), "failed": j.s("state") == "error", "msg": j.s("msg") })).collect::<Vec<_>>(),
         "unread": unread, "empty": empty,
     })
+}
+/// Every repo the board knows, by name with its key, and the one new tasks go to: to pick from (web.rs: the repo call).
+fn repos_of(s: &State) -> Vec<Value> {
+    let mut names: Vec<String> = crate::store::repos::known_repos().keys().cloned().collect();
+    names.sort();
+    names.into_iter().map(|n| json!({ "key": s.data.keys.get(&n).cloned().unwrap_or_default(), "now": n == s.data.repo, "name": n })).collect()
 }

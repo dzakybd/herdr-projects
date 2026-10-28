@@ -34,7 +34,7 @@ impl Entry {
     fn means(mut self, m: &str) -> Self { self.means = m.into(); self }
 }
 
-/// The six every role has. `who` is the role as a sentence names it.
+/// The seven every role has. `who` is the role as a sentence names it.
 fn role(name: &str, who: &str, agent: &str, kind: Kind) -> Vec<Entry> {
     let cap = if name == "worker" { "Agent's".to_string() } else { format!("{}{}'s", name[..1].to_uppercase(), &name[1..]) };
     let names = crate::agents::kinds::KIND_NAMES.iter().map(|k| format!("`{k}`")).collect::<Vec<_>>().join(", ");
@@ -52,6 +52,8 @@ fn role(name: &str, who: &str, agent: &str, kind: Kind) -> Vec<Entry> {
         e(&format!("{name}.access"), &format!("{cap} access"), kind, Ty::Access, json!("full"), &format!("what {who} may do without asking: `full` (anything), `ask` (nothing: it asks first) or `auto` (its program's own auto mode, which checks each action and does the safe ones without asking, and stops the risky ones). The board turns it into each program's own flags. `ask` is refused for a program that cannot ask ({}); `auto` for one with no auto mode (all but {}), and for a version older than its first", crate::agents::kinds::all().filter(|k| k.access_ask.is_none()).map(|k| k.name).collect::<Vec<_>>().join(", "), crate::agents::access::with_auto().join(", "))),
         e(&format!("{name}.account"), &format!("{cap} account"), kind, Ty::Text, json!("none"),
             &format!("the Claude Code account {who} runs under: a name of a folder in `~/.claude-accounts/` (`work`), or a path to a Claude Code config folder (`~/accounts/work`), or `none` for the account herdr itself runs under. Only `claude` has accounts of this kind; for another program it does nothing. A folder that is not there is refused when the agent starts")),
+        e(&format!("{name}.model"), &format!("{cap} model"), kind, Ty::Text, json!("none"),
+            &format!("the model {who} runs on Claude Code: any name its account takes (`opus`, `sonnet`, or one a gateway names in its `account.env` as `ACCOUNT_MODELS`), or `none` for the one `{name}.agent` or the account itself says. It wins over a model after the slash in `{name}.agent`, and is checked by the program, not by herdr. Only `claude` has it; for another program it does nothing")),
         text]
 }
 

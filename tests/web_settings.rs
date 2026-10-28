@@ -76,3 +76,18 @@ fn every_setting_of_the_open_task_with_its_label_and_meaning_changed_and_put_bac
     web(&w, "press", json!({ "id": "archiveView" }));
     assert_eq!(web(&w, "pick", json!({ "id": t, "open": true })).at("settings").at("canSet"), &json!(false));
 }
+
+#[test]
+fn the_repo_new_tasks_go_to_is_picked_on_the_page_among_the_repos_the_board_knows() {
+    let w = world();
+    w.add("A task");
+    let s = web(&w, "board", json!({}));
+    let repos = s.at("list").at("head").arr("repos");
+    assert!(repos.iter().any(|r| r.s("name") == "proj" && r.at("now") == &json!(true)), "{repos:?}");
+    assert!(web_as(&w, "test", "repo", json!({ "to": "no-such-repo" })).unwrap_err().contains("No repo named"));
+    assert!(web_as(&w, "test", "repo", json!({ "to": "../etc", "role": "watch" })).unwrap_err().contains("only watch"));
+    let again = web(&w, "repo", json!({ "to": "proj" }));
+    assert_eq!(again.at("list").at("head").s("where"), "proj");
+    // A pane that is no pane's name, or none that herdr has, leaves it where it was.
+    for bad in ["", "../../x", "w9:p9"] { assert_eq!(web(&w, "follow", json!({ "pane": bad })).at("list").at("head").s("where"), "proj", "{bad}"); }
+}

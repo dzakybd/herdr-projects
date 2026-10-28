@@ -21,6 +21,22 @@ pub fn folder(account: &str) -> Option<PathBuf> {
 pub fn kind_of(account: &str) -> &'static str {
     match folder(account) { None => "default", Some(d) if !d.is_dir() => "missing", Some(d) if d.join("account.env").is_file() => "gateway", Some(_) => "login" }
 }
+/// The models the page offers for an account, besides `none`: a gateway's own, named in its `account.env` as
+/// `ACCOUNT_MODELS="a b c"`; a login's, Claude Code's short names. None for an account that is not there.
+pub fn models_of(account: &str) -> Vec<String> {
+    match (kind_of(account), folder(account)) {
+        ("gateway", Some(d)) => std::fs::read_to_string(d.join("account.env")).unwrap_or_default().lines()
+            .find_map(|l| l.trim().strip_prefix("ACCOUNT_MODELS=")).map(|v| v.trim_matches(|c| c == '"' || c == '\'').split_whitespace().map(String::from).collect()).unwrap_or_default(),
+        ("login", _) | ("default", _) => crate::agents::kinds::kind("claude").map(|a| a.models.aliases.iter().filter(|m| **m != "default").map(|m| m.to_string()).collect()).unwrap_or_default(),
+        _ => vec![],
+    }
+}
+/// The model a Claude Code role runs on: `<role>.model` where it is set (any name its account takes, so not one herdr
+/// lists), else the one after the slash of `<role>.agent`. Another program keeps its own.
+pub fn model_for(kind: &str, from_agent: &str, pick: &str) -> String {
+    let p = pick.trim();
+    if kind == "claude" && !p.is_empty() && !p.eq_ignore_ascii_case("none") { p.to_string() } else { from_agent.to_string() }
+}
 /// What the settings page offers for `<role>.account`: `none`, then each account folder of `~/.claude-accounts/` by its
 /// name, in order.
 pub fn choices() -> Vec<String> {

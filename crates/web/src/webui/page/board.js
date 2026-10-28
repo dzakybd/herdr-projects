@@ -74,7 +74,11 @@ function draw() {
   root.classList.toggle("has-task", !!snap.panel);
   // The repo with its key beside it, dimmed: `gtm-agent · AGT`.
   const head = snap.list.head, where = part("where");
-  where.replaceChildren(...[head.where, head.where && head.whereKey ? h("span.sw-repo-key", ` · ${head.whereKey}`) : null, head.session ? `${head.where ? " · " : ""}session ${head.session}` : null].filter(Boolean));
+  // With more than one repo known, the repo is a list to pick from: the one new tasks go to. Alone, it is only said.
+  const repos = head.repos || [];
+  if (repos.length > 1) where.replaceChildren(h("select.sw-where-pick", { "aria-label": "The repo new tasks go to", title: "The repo new tasks go to", onchange: (e) => call("repo", { to: e.target.value }) },
+    repos.map((r) => h("option", { value: r.name, selected: r.now }, r.key ? `${r.name} · ${r.key}` : r.name))), ...(head.session ? [` · session ${head.session}`] : []));
+  else where.replaceChildren(...[head.where, head.where && head.whereKey ? h("span.sw-repo-key", ` · ${head.whereKey}`) : null, head.session ? `${head.where ? " · " : ""}session ${head.session}` : null].filter(Boolean));
   const once = (key, value, fn) => { const text = JSON.stringify(value); if (drawn[key] !== text) { drawn[key] = text; fn(); } };
   once("chips", [snap.flags, snap.list.head], () => part("chips").replaceChildren(...chips()));
   once("shows", snap.list.shows, () => {
@@ -119,6 +123,13 @@ function take(out) {
   draw();
   tell({ scope: snap.flags.scope });
   return true;
+}
+// The web UI's page names the pane it shows in its address. A workspace clicked there is another pane: the board follows
+// it to that pane's repo (the server decides which repo it is, if one the board knows).
+let followed = "";
+function followPane() {
+  const pane = new URLSearchParams(location.search).get("pane") || "";
+  if (pane && pane !== followed && !busy) { followed = pane; call("follow", { pane }); }
 }
 async function refresh() { if (!root || busy) return; take(await get("board", { have: mark })); }
 // Asked again at once, whole: another machine's board was picked in the sidebar while the board is open.
@@ -181,7 +192,7 @@ export function openBoard({ onClose }) {
   window.addEventListener("resize", fit);
   refresh();
   tell();
-  timer = setInterval(() => { fit(); if (!document.hidden) refresh(); }, 2000);
+  timer = setInterval(() => { fit(); if (!document.hidden) { followPane(); refresh(); } }, 2000);
 }
 export function closeBoard() {
   if (!root) return;

@@ -212,3 +212,26 @@ fn the_account_setting_offers_none_and_each_account_folder_in_order() {
     assert_eq!(words.len(), 3);
     assert!(sw::board::update::edit::words_of("worker.effort").is_none());
 }
+
+#[test]
+fn a_roles_model_is_the_accounts_own_name_for_claude_and_nothing_for_another_program() {
+    use sw::agents::account::{model_for, models_of};
+    assert_eq!(model_for("claude", "opus", "glm-5"), "glm-5");
+    assert_eq!(model_for("claude", "opus", "none"), "opus");
+    assert_eq!(model_for("claude", "", ""), "");
+    assert_eq!(model_for("codex", "gpt-6", "glm-5"), "gpt-6");
+    let _w = world();
+    let accounts = user_home().join(".claude-accounts");
+    std::fs::create_dir_all(accounts.join("login")).unwrap();
+    std::fs::create_dir_all(accounts.join("gw")).unwrap();
+    std::fs::write(accounts.join("gw/account.env"), "ACCOUNT_MODELS=\"m-one m-two\"\nANTHROPIC_MODEL=m-one\n").unwrap();
+    assert_eq!(models_of("gw"), ["m-one", "m-two"]);
+    assert!(models_of("login").contains(&"opus".to_string()) && !models_of("login").contains(&"default".to_string()));
+    assert!(models_of("nope").is_empty());
+    let mut got = vec![];
+    for role in ["worker", "reviewer", "coordinator"] {
+        let r = sw::agents::start::role_of(role, &|n| match n { n if n == format!("{role}.agent") => json!("claude/opus"), n if n == format!("{role}.model") => json!("m-two"), _ => json!("none") });
+        got.push(r.model);
+    }
+    assert_eq!(got, ["m-two", "m-two", "m-two"], "the role's model wins over the one after the slash");
+}

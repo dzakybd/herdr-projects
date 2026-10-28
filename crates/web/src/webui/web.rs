@@ -28,8 +28,13 @@ fn last_folder() -> String {
     let cwd = terminal_view().t("cwd");
     if !cwd.is_empty() && std::path::Path::new(&cwd).exists() { cwd } else { crate::store::files::user_home().display().to_string() }
 }
+/// Where the web board is "in": the repo picked on the web (kept in its own file), else where the terminal board was.
+fn chosen_folder() -> String {
+    let cwd = crate::store::files::read_obj(&prefs_file()).unwrap_or_default().t("cwd");
+    if !cwd.is_empty() && std::path::Path::new(&cwd).exists() { cwd } else { last_folder() }
+}
 fn open() -> Client {
-    let ctx = Ctx { cwd: last_folder(), web: true, ..Default::default() };
+    let ctx = Ctx { cwd: chosen_folder(), web: true, ..Default::default() };
     let keys = crate::store::keys_given::keys_note(); // every repo has a short key: what was given, said once
     let mut s = State::new(ctx, Data::default());
     if !keys.is_empty() { s.flash(keys, crate::shown::ink::Ink::Muted); }
@@ -74,7 +79,30 @@ pub fn save_prefs(s: &State) {
     let scope = s.web.followed.clone().unwrap_or_else(|| s.scope.clone());
     // Only a board picked on the web is kept (picked): any other save leaves the web following the terminal board.
     let own = if s.web.own_scope { json!(scope) } else { Value::Null };
-    let _ = crate::store::files::write_json(&prefs_file(), &json!({ "byRepo": s.by_repo, "byMachine": s.by_machine, "allDone": s.all_done, "ownScope": own, "folded": s.folded, "show": s.show, "chat": if s.chat_open { "open" } else { "closed" } }));
+    let cwd = crate::store::files::read_obj(&prefs_file()).unwrap_or_default().get("cwd").cloned().unwrap_or(Value::Null); // a repo picked on the web stays picked
+    let _ = crate::store::files::write_json(&prefs_file(), &json!({ "cwd": cwd, "byRepo": s.by_repo, "byMachine": s.by_machine, "allDone": s.all_done, "ownScope": own, "folded": s.folded, "show": s.show, "chat": if s.chat_open { "open" } else { "closed" } }));
+}
+/// The repo new tasks go to from now on, kept for the web board and the tasks read again for it. Nothing when it is that already.
+fn set_repo(c: &mut Client, dir: String) {
+    if c.s.ctx.cwd == dir { return; }
+    c.s.ctx.cwd = dir.clone();
+    let mut p = crate::store::files::read_obj(&prefs_file()).unwrap_or_default();
+    p.insert("cwd".into(), json!(dir));
+    let _ = crate::store::files::write_json(&prefs_file(), &Value::Object(p));
+    reload(c);
+}
+/// The folder of a repo the board knows that a herdr pane is in (its folder now, or that of what runs there); None for
+/// a pane in no git repo, one that is gone, or a name that is no pane's. A repo not seen before is named by this.
+fn repo_of_pane(pane: &str) -> Option<String> {
+    if pane.is_empty() || pane.len() > 40 || !pane.chars().all(|ch| ch.is_ascii_alphanumeric() || ":-_".contains(ch)) { return None; }
+    let p = crate::herdr::Herdr::new(None).pane_get(pane)?;
+    let at = if p.s("foreground_cwd").is_empty() { p.t("cwd") } else { p.t("foreground_cwd") };
+    if at.is_empty() { return None; }
+    let root = std::fs::canonicalize(crate::store::repos::primary_root(std::path::Path::new(&at))).ok()?;
+    if let Some(known) = crate::store::repos::known_repos().values().map(text).find(|d| std::fs::canonicalize(d).ok().as_deref() == Some(root.as_path())) { return Some(known); }
+    // A git repo not seen before is named now, as the first task added in it would (never the home folder).
+    if root == std::fs::canonicalize(crate::store::files::user_home()).ok()? || !crate::store::repos::is_repo(&root) { return None; }
+    crate::store::repos::repo_of(&root).ok().map(|(_, dir)| dir.display().to_string())
 }
 /// Everything read again: the tasks, the closer look at the selected one and the one the chat talks to.
 pub fn reload(c: &mut Client) {
@@ -179,6 +207,21 @@ pub fn call_with(client_id: &str, call: &str, args: Value, machine: &str, pcs: O
             if !drive { return watch(); }
             let v = args.at("value");
             super::view::set_setting(c, args.s("id"), args.s("name"), if v.is_null() { None } else { Some(text(v)) })?;
+            Ok(snapshot(c, ""))
+        }
+        // The repo new tasks go to, picked on the page: one the board knows, by its name.
+        "repo" => {
+            if !drive { return watch(); }
+            let known = crate::store::repos::known_repos();
+            let Some((_, dir)) = known.iter().find(|(k, _)| k.as_str() == args.s("to")) else { return Err(format!("No repo named \"{}\".", args.s("to"))) };
+            set_repo(c, text(dir));
+            Ok(snapshot(c, ""))
+        }
+        // The web UI's page moved to another pane (a workspace was clicked): the board follows to its repo, where the board
+        // knows it. A pane in no repo the board knows leaves it where it is.
+        "follow" => {
+            if !drive { return watch(); }
+            if let Some(dir) = repo_of_pane(args.s("pane")) { set_repo(c, dir); }
             Ok(snapshot(c, ""))
         }
         // These only change what this page looks at: its selection, its filter, its folded headings.
