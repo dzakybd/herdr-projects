@@ -234,11 +234,14 @@ pub fn skill_dir(kind: &str) -> Option<PathBuf> {
 /// Mark a repo as trusted in the program's own settings, so a new worktree starts without its "trust this folder?"
 /// dialog. Claude keeps trust per repository root in ~/.claude.json; Codex in ~/.codex/config.toml (a command-line
 /// override does not count, so the table is added to the file once: codex_trust.rs).
-pub fn trust(kind: &str, root: &Path) -> bool {
+pub fn trust(kind: &str, root: &Path) -> bool { trust_in(kind, root, None) }
+/// The same in the config file of an account (Claude Code keeps what it trusts in `<CLAUDE_CONFIG_DIR>/.claude.json`),
+/// where `claude_json` names it; None is the user's own.
+pub fn trust_in(kind: &str, root: &Path, claude_json: Option<PathBuf>) -> bool {
     let root_s = root.display().to_string();
     match kind {
         "claude" => {
-            let file = claude_file();
+            let file = claude_json.unwrap_or_else(claude_file);
             let mut j: Obj = match fs::read_to_string(&file) { Ok(t) => match serde_json::from_str::<Value>(&t) { Ok(Value::Object(o)) => o, _ => return false }, Err(e) if e.kind() == std::io::ErrorKind::NotFound => Obj::new(), Err(_) => return false };
             if j.at("projects").at(&root_s).b("hasTrustDialogAccepted") { return true; }
             j.obj_mut("projects").obj_mut(&root_s).put("hasTrustDialogAccepted", true);

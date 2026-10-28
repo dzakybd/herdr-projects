@@ -67,7 +67,7 @@ pub fn review_once(id: &str, g: &mut Guard, text: &str, change: Option<&Value>, 
     let mut pane_tab: Option<(String, String)> = None;
     let (mut error, mut review, mut auth, mut cut, mut ended): (String, Option<Obj>, bool, Option<Cut>, bool) = (String::new(), None, false, None, false);
     let run = (|| -> Res<()> {
-        installed::pre_trust(&rkind, &if t.b("root") { PathBuf::from(t.s("root")) } else { folder_of(t.s("id")) }, &who.access);
+        installed::pre_trust(&rkind, &if t.b("root") { PathBuf::from(t.s("root")) } else { folder_of(t.s("id")) }, &who.access, &who.account);
         close_reviewer(id); // a tab left over from an interrupted round
         // Its own tab, never focused: the human stays where they are, and the agent's tab and the board keep their size.
         let label = if plan.is_some() { Some(flow::tabs::PLAN_REVIEW_TAB) } else { None };

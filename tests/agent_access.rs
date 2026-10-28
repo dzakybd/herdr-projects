@@ -235,3 +235,18 @@ fn a_roles_model_is_the_accounts_own_name_for_claude_and_nothing_for_another_pro
     }
     assert_eq!(got, ["m-two", "m-two", "m-two"], "the role's model wins over the one after the slash");
 }
+
+#[test]
+fn a_folder_is_trusted_in_the_config_of_the_account_the_role_runs_under() {
+    let w = world();
+    let acc = user_home().join(".claude-accounts/trusting");
+    std::fs::create_dir_all(&acc).unwrap();
+    let folder = w.base.join("proj-folder");
+    std::fs::create_dir_all(&folder).unwrap();
+    assert!(sw::agents::installed::pre_trust("claude", &folder, "full", "trusting"));
+    let j: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(acc.join(".claude.json")).unwrap()).unwrap();
+    assert_eq!(j["projects"][folder.display().to_string()]["hasTrustDialogAccepted"], json!(true));
+    // Under `ask` nothing is trusted for the role: it asks, as it was told to.
+    let other = w.base.join("other-folder");
+    assert!(!sw::agents::installed::pre_trust("claude", &other, "ask", "trusting"));
+}

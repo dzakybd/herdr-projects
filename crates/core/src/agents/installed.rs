@@ -74,4 +74,8 @@ pub fn said_to(k: &str, file: Option<&Path>, session: &str, cwd: &Path, text: &s
 pub fn full_access(k: &str, access: &str) -> bool { access != "ask" || kind(k).map(|a| a.access_ask.is_none()).unwrap_or(true) }
 pub fn interrupt_key(k: &str) -> &'static str { kind(k).map(|a| a.interrupt).unwrap_or("esc") }
 /// Best effort: a failure here only means the agent's own trust dialog shows, which the inbox handles.
-pub fn pre_trust(k: &str, root: &Path, access: &str) -> bool { adapter::can_trust(k) && full_access(k, access) && adapter::trust(k, root) }
+/// The folder trusted before the program starts there, in the account the role runs under (`<role>.account`) where it has one.
+pub fn pre_trust(k: &str, root: &Path, access: &str, account: &str) -> bool {
+    if !(adapter::can_trust(k) && full_access(k, access)) { return false; }
+    match super::account::folder(account).filter(|_| k == "claude") { Some(d) => adapter::trust_in(k, root, Some(d.join(".claude.json"))), None => adapter::trust(k, root) }
+}
