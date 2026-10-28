@@ -58,3 +58,32 @@ names for a login, `ACCOUNT_MODELS` for a gateway, typed where there is no list)
 heading or task only; **Put back** takes it away. It lays out for a phone: full-width lists and 44 px targets.
 
 The terminal board's settings page lists the same settings, typed.
+
+## Managing accounts in the web board
+
+**Manage accounts**, in the Accounts card's heading, opens a sheet that makes and changes accounts, so none has to be
+made by hand in a terminal. It is for a device that may drive the board; one that only watches does not see the button,
+and the calls behind it (`accounts`, `account-save`) refuse it.
+
+- **The list** shows every folder of `~/.claude-accounts/` and what it is, a Claude login or a gateway. Tap one to change it.
+- **New account**: a name (a to z, digits, `_` and `-`, at most 32, starting with a letter or digit), and a type.
+  The folder is made under `~/.claude-accounts/` only, readable by you alone; a name that is already there is refused,
+  and a name with a slash or `..` in it is no name.
+  - **Claude login**: the sheet then shows the command to run once in a terminal, with a Copy button:
+    `CLAUDE_CONFIG_DIR=~/.claude-accounts/<name> claude`. The login happens there; the board never sees it.
+  - **Gateway**: writes the account's `account.env` from the form.
+- **A gateway's fields**: the base URL (`http://` or `https://`), the **name** of the variable that holds its key, the
+  default model (`ANTHROPIC_MODEL`), the models the board offers (`ACCOUNT_MODELS`, one per line or separated by spaces)
+  and, optionally, the context tokens (`CLAUDE_CODE_MAX_CONTEXT_TOKENS`). The key variable must be exported by the shell
+  the agent's pane starts (for example `export MY_GATEWAY_KEY=…` in `~/.zshrc`): the sheet never takes a key, and the board
+  stores none. A file that holds a key written out is told so, the key is not shown, and saving replaces it with the variable.
+- **Saving rewrites only those lines** of `account.env` (the file is written beside itself and renamed over it, mode
+  `0600`). Comments and every other line, such as `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, stay as they are; an empty default
+  model, model list or context size drops its line. A value that would be unsafe in a file the shell sources (a quote, a
+  backtick, `$( )`, a newline, a space in a URL or model name) is refused, with the reason shown in the sheet.
+- **Login and gateway, both ways**: a login becomes a gateway by giving it the fields (an `account.env` is made). A gateway
+  becomes a login again by deleting its `account.env`, with every line in it, so the sheet asks for a tick first.
+- Deleting a whole account folder is not offered here: remove it in a terminal.
+
+The Accounts card's lists read the folders and `ACCOUNT_MODELS` at every look, so a saved account and its models are
+offered at once, with no restart.

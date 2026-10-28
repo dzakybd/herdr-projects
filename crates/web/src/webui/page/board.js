@@ -7,11 +7,12 @@ import { h, icon, get, post } from "./dom.js";
 import { listEl } from "./list.js";
 import { panelEl, settingsEl } from "./panel.js";
 import { chatEl } from "./chat.js";
+import { accountsEl } from "./accounts.js";
 import { askEl, automationEl, menuEl, pickerEl, toast, trapEscape } from "./sheets.js";
 import { goTo } from "./talk.js";
 
 let root = null, timer = null, closing = null, snap = null, mark = "", busy = false;
-let menuOpen = false, picking = false, adding = false, finding = false, seenMsg = -1, seenGo = null, chat = null, untrap = null, wentTo = 0;
+let menuOpen = false, picking = false, adding = false, managing = false, finding = false, seenMsg = -1, seenGo = null, chat = null, untrap = null, wentTo = 0;
 const drawn = { list: "", panel: "", settings: "", ask: "", menu: "", chips: "", shows: "", pick: "" };
 const part = (name) => root.querySelector(`.sw-${name}`);
 
@@ -93,12 +94,14 @@ function draw() {
   once("panel", [snap.panel, snap.actions, snap.canOpen, snap.role], () => { const el = panelEl(snap, { onPress: press, onMenu: () => { menuOpen = true; draw(); }, onClose: () => call("pick", { id: snap.list.selected, open: false }), onNew: async (to) => { const out = await call("coordinator-new", { to }); if (out.ok && out.said) toast(part("toast-host"), { text: out.said, kind: "" }, () => {}); }, onGo: (id) => call("pick", { id, open: true }) }); const host = part("task-host"), top = host.scrollTop; part("panel-host").replaceChildren(...(el ? [el] : [])); host.scrollTop = top; });
   // All settings stands under the task in a place of its own, drawn again only when a setting changed: what you
   // are typing into one of its boxes is not taken away by the task's status moving on.
-  once("settings", snap.settings, () => { const host = part("task-host"), top = host.scrollTop, went = snap.settings?.show || 0, el = settingsEl(snap, { onSet: (id, name, value) => call("set", { id, name, value }) }); part("settings-host").replaceChildren(...(el ? [el] : [])); host.scrollTop = top; if (el && went > wentTo) el.scrollIntoView({ block: "start" }); wentTo = went; });
+  once("settings", snap.settings, () => { const host = part("task-host"), top = host.scrollTop, went = snap.settings?.show || 0, el = settingsEl(snap, { onSet: (id, name, value) => call("set", { id, name, value }), onAccounts: () => { managing = true; draw(); } }); part("settings-host").replaceChildren(...(el ? [el] : [])); host.scrollTop = top; if (el && went > wentTo) el.scrollIntoView({ block: "start" }); wentTo = went; });
   once("ask", snap.ask, () => part("ask-host").replaceChildren(...[askEl(snap.ask, press)].filter(Boolean)));
   once("menu", menuOpen ? [snap.menu, snap.list.selected] : null, () => part("menu-host").replaceChildren(...(menuOpen ? [menuEl(snap, { onPress: press, onClose: () => { menuOpen = false; draw(); }, onFind: () => { finding = true; draw(); part("find").focus(); } })] : [])));
   once("pick", picking ? [snap.flags.scope] : null, () => { if (picking) pickerEl(snap.flags.scope, { onPick: scopeTo, onClose: () => { picking = false; draw(); } }).then((el) => { if (picking && root) part("pick-host").replaceChildren(el); }); else part("pick-host").replaceChildren(); });
   // The form for an automation stays as typed while the board changes under it: made once, when it opens.
   once("add", adding ? "open" : null, () => part("add-host").replaceChildren(...(adding ? [automationEl({ repos: snap.list.head.repos || [], onClose: () => { adding = false; draw(); }, onSave: addAutomation })] : [])));
+  // The Accounts sheet keeps what is typed while the board changes under it: made once, when it opens; a save is drawn from at once.
+  once("manage", managing ? "open" : null, () => part("manage-host").replaceChildren(...(managing ? [accountsEl({ onClose: () => { managing = false; draw(); }, onSaved: take })] : [])));
   part("find-row").hidden = !finding;
   chat.update(snap);
   if (snap.msg && snap.msg.n !== seenMsg) { seenMsg = snap.msg.n; toast(part("toast-host"), snap.msg, () => press("back")); }
@@ -186,7 +189,7 @@ export function openBoard({ onClose }) {
     h("div.sw-body", h("div.sw-list-host"), h("div.sw-task-host", h("div.sw-panel-host"), h("div.sw-settings-host"))),
     h("div.sw-toast-host", { "aria-live": "polite" }),
     chat.el,
-    h("div.sw-ask-host"), h("div.sw-menu-host"), h("div.sw-pick-host"), h("div.sw-add-host"));
+    h("div.sw-ask-host"), h("div.sw-menu-host"), h("div.sw-pick-host"), h("div.sw-add-host"), h("div.sw-manage-host"));
   document.body.append(root);
   // On a phone the Board entry is in the web UI's drawer: the drawer closes as it does when you pick a pane there.
   try { document.querySelector(".scrim.is-open")?.click(); } catch {}
@@ -194,7 +197,7 @@ export function openBoard({ onClose }) {
   // (hidden as its Hide button hides it, while nothing is typed or searched), then the board itself. In the web UI's own
   // chat docked under the board (its box, its menus), Escape is the web UI's.
   untrap = trapEscape(() => {
-    if (snap?.ask) return press("back"); if (menuOpen || picking || adding) { menuOpen = picking = adding = false; return draw(); } if (chat.full()) return chat.full(false);
+    if (snap?.ask) return press("back"); if (menuOpen || picking || adding || managing) { menuOpen = picking = adding = managing = false; return draw(); } if (chat.full()) return chat.full(false);
     if (snap?.panel) return call("pick", { id: snap.list.selected, open: false });
     if (snap?.chat?.open && snap.chat.text && !finding && !chat.typing()) return press("chatMessage");
     closing?.();
@@ -209,7 +212,7 @@ export function closeBoard() {
   if (!root) return;
   // (Closed from here on: the chat's going puts the web UI back on its pane, and the page follows that at once.)
   const was = root, c = chat;
-  root = null; chat = null;
+  root = null; chat = null; managing = false; delete drawn.manage;
   clearInterval(timer); timer = null;
   untrap?.(); untrap = null;
   window.removeEventListener("resize", fit);

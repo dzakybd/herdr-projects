@@ -66,7 +66,7 @@ function setRow(x, whose, canSet, onSet) {
 const ROLES = { worker: ["Agent", "user"], reviewer: ["Reviewer", "eye"], coordinator: ["Coordinator", "board"] };
 const KINDS = { default: ["key", "The account herdr itself runs under"], login: ["user", "A Claude login"], gateway: ["cloud", "Gateway: own base URL and model"], missing: ["close", "No such account folder: its agent will not start"] };
 // A changed one has its label in bold; the heading says for whom.
-function accountsEl(rows, models, whose, canSet, onSet) {
+function accountsEl(rows, models, whose, canSet, onSet, onManage) {
   // Its model: one of the account's, or typed where the account names none. Its own is put back like the account's.
   const model = (acct) => {
     const m = models.find((y) => y.name.split(".")[0] === acct.name.split(".")[0]);
@@ -81,9 +81,9 @@ function accountsEl(rows, models, whose, canSet, onSet) {
       x.program && x.program !== "claude" ? h("p.sw-set-from.sw-acct-warn", icon("alert"), h("span", `Runs on ${x.program}: an account is for Claude Code only.`),
         canSet ? h("button.sw-set-back", { type: "button", onclick: () => onSet(`${x.name.split(".")[0]}.agent`, "claude") }, "Use Claude") : null) : model(x));
   };
-  return h("section.sw-accounts", h("h4.sw-accounts-head", icon("user"), "Accounts", h("span.sw-settings-note", `which Claude account runs each role, for ${whose}`)), rows.map(row));
+  return h("section.sw-accounts", h("h4.sw-accounts-head", icon("user"), "Accounts", h("span.sw-settings-note", `which Claude account runs each role, for ${whose}`), canSet && onManage ? h("button.sw-set-back.sw-accounts-manage", { type: "button", "aria-haspopup": "dialog", onclick: onManage }, "Manage accounts") : null), rows.map(row));
 }
-export function settingsEl(snap, { onSet }) {
+export function settingsEl(snap, { onSet, onAccounts }) {
   const s = snap.settings;
   if (!s || !s.rows.length) return null;
   if (s.show !== shown) { if (s.show > shown && shown >= 0) unfolded = true; shown = s.show; }
@@ -94,5 +94,5 @@ export function settingsEl(snap, { onSet }) {
     h("summary.sw-settings-head", "All settings", h("span.sw-settings-note", `${s.rows.filter((x) => x.own).length} of ${s.whose.endsWith("s") ? s.whose + "'" : s.whose + "'s"} own`)),
     h("p.sw-set-means", s.canSet ? `Every setting. A change here is for ${s.whose} only, and marked *.` : "Read-only here."),
     rest.map((x) => setRow(x, s.whose, s.canSet, set)));
-  return h("div.sw-settings-wrap", accounts.length ? accountsEl(accounts, models, s.whose, s.canSet, set) : null, el);
+  return h("div.sw-settings-wrap", accounts.length ? accountsEl(accounts, models, s.whose, s.canSet, set, onAccounts) : null, el);
 }

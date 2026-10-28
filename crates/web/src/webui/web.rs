@@ -256,6 +256,16 @@ pub fn call_with(client_id: &str, call: &str, args: Value, machine: &str, pcs: O
             o.as_object_mut().unwrap().insert("said".into(), json!(said));
             Ok(o)
         }
+        // The Accounts sheet (accounts.rs): the accounts there are, and one made or changed. A dropdown of the Accounts card reads them again at its next snapshot.
+        "accounts" => { if !drive { return watch(); } Ok(super::accounts::accounts()) }
+        "account-save" => {
+            if !drive { return watch(); }
+            let said = super::accounts::save(&args)?;
+            let mut o = snapshot(c, "");
+            o.as_object_mut().unwrap().insert("said".into(), json!(said));
+            o.as_object_mut().unwrap().extend(obj(super::accounts::accounts()));
+            Ok(o)
+        }
         // The web UI's page moved to another pane (a workspace was clicked): the board follows to its repo, where the board
         // knows it. A pane in no repo the board knows leaves it where it is.
         "follow" => {

@@ -5,7 +5,7 @@ use crate::store::files::user_home;
 use std::path::PathBuf;
 
 /// The folder of accounts a bare name is looked for in, under the user's home.
-const ACCOUNTS: &str = ".claude-accounts";
+pub const ACCOUNTS: &str = ".claude-accounts";
 
 /// The config folder an account names: a path (`~/work-account`, or an absolute one), or a bare name, which is a
 /// folder of `~/.claude-accounts/`. None for `none` or an empty value.
