@@ -1,4 +1,5 @@
-//! `<role>.account`: the Claude Code account a role's agent runs under, given to its pane as the config folder.
+//! `<role>.account`: the Claude Code account a role's agent runs under, given to its pane as the config folder, and
+//! the environment of the account's own `account.env` where it has one (a gateway's base URL and key, a model).
 use crate::err::Res;
 use crate::store::files::user_home;
 use std::path::PathBuf;
@@ -16,12 +17,17 @@ pub fn folder(account: &str) -> Option<PathBuf> {
     Some(user_home().join(ACCOUNTS).join(a))
 }
 /// The line that gives a pane's shell the account, before the program starts there (a leading space keeps it out of
-/// the shell's history where that is set). None where no account is set or the program is not Claude Code, which is
-/// the only one with accounts of this kind. A folder that is not there is refused: a typo would otherwise start a
+/// the shell's history where that is set). An `account.env` in the folder is sourced after it, by the pane's own
+/// shell, so it may name variables that shell already has (`ANTHROPIC_AUTH_TOKEN=\"$MODEL_IQ_API_KEY\"`) and the board
+/// never holds a key. None where no account is set or the program is not Claude Code, which is the only one with
+/// accounts of this kind. A folder that is not there is refused: a typo would otherwise start a
 /// new, logged-out account.
 pub fn export_line(kind: &str, account: &str) -> Res<Option<String>> {
     let Some(dir) = folder(account).filter(|_| kind == "claude") else { return Ok(None) };
     if !dir.is_dir() { crate::fail!("the account \"{}\" has no folder {}. Set the role's account to another, or none.", account.trim(), dir.display()); }
     let label = dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-    Ok(Some(format!(" export CLAUDE_CONFIG_DIR={} CLAUDE_ACCOUNT_LABEL={}", crate::util::shq(&dir.display().to_string()), crate::util::shq(&label))))
+    let mut line = format!(" export CLAUDE_CONFIG_DIR={} CLAUDE_ACCOUNT_LABEL={}", crate::util::shq(&dir.display().to_string()), crate::util::shq(&label));
+    let env = dir.join("account.env");
+    if env.is_file() { line.push_str(&format!("; set -a; . {}; set +a", crate::util::shq(&env.display().to_string()))); }
+    Ok(Some(line))
 }

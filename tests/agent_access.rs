@@ -182,6 +182,17 @@ fn claude_gets_the_folder_and_label_and_an_unknown_folder_is_refused() {
 }
 
 #[test]
+fn an_account_env_file_is_sourced_by_the_panes_shell_after_the_folder_is_given() {
+    let w = world();
+    let dir = w.base.join("gateway");
+    std::fs::create_dir_all(&dir).unwrap();
+    assert!(!export_line("claude", dir.to_str().unwrap()).unwrap().unwrap().contains("account.env"));
+    std::fs::write(dir.join("account.env"), "ANTHROPIC_BASE_URL=https://x\n").unwrap();
+    let line = export_line("claude", dir.to_str().unwrap()).unwrap().unwrap();
+    assert!(line.contains("; set -a; . '") && line.ends_with("account.env'; set +a"), "{line}");
+}
+
+#[test]
 fn no_account_and_other_programs_export_nothing() {
     let w = world();
     assert_eq!(export_line("claude", "none").unwrap(), None);
