@@ -16,13 +16,14 @@ export function askEl(ask, onPress) {
     h("div.sw-ask-keys", // A yes that cannot be undone (a merge, a remove) is never the filled button: neither answer is.
     ask.keys.map((k, n) => h(`button.btn${n === 0 && !ask.danger ? ".btn-primary" : ""}.sw-act`, { type: "button", onclick: () => onPress(k.id) }, cap(k.label))))));
 }
-export function menuEl(snap, { onPress, onClose, onFind }) {
+export function menuEl(snap, { onPress, onClose, onFind, onAccounts }) {
   const title = snap.list.groups.flatMap((g) => g.rows).find((r) => r.id === snap.list.selected)?.title || "";
   const group = (name) => { const items = snap.menu.filter((i) => i.group === name); return items.length ? h("section.sw-menu-group", h("h4.sw-menu-name", GROUPS[name] || name), items.map((i) => h("button.sw-menu-item", { type: "button", onclick: () => { onClose(); onPress(i.id); } }, cap(i.label)))) : null; };
   return h("div.sw-scrim", { onclick: (e) => { if (e.target === e.currentTarget) onClose(); } }, h("div.sw-sheet.sw-menu", { role: "dialog", "aria-modal": "true", "aria-label": "More" },
     h("header.sw-menu-head", h("span.sw-menu-title", title ? `For "${title}"` : "More"), h("button.icon-button", { type: "button", "aria-label": "Close", onclick: onClose }, icon("close"))),
     group("ctrl"),
     h("section.sw-menu-group", h("h4.sw-menu-name", "Find"), h("button.sw-menu-item", { type: "button", onclick: () => { onClose(); onFind(); } }, "Find: show only the tasks that match")),
+    onAccounts ? h("section.sw-menu-group", h("h4.sw-menu-name", "Accounts"), h("button.sw-menu-item", { type: "button", onclick: () => { onClose(); onAccounts(); } }, "Manage accounts: add or change a Claude login or a gateway, for every repo")) : null,
     group("alt")));
 }
 // Whose tasks to show: every board the sidebar's Boards section lists (webui/boards.rs), each with how it stands, the

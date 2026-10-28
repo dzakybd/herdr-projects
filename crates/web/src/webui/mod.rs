@@ -18,6 +18,7 @@ pub mod follow;
 pub mod going;
 pub mod ink;
 pub mod model;
+pub mod open;
 pub mod page;
 pub mod view;
 pub mod voice;

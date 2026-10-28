@@ -14,10 +14,13 @@ use std::sync::{Arc, Mutex};
 
 /// `boards_at`: when the sidebar's Boards section last had the other machines asked (boards.rs).
 /// `id`: the page's own name for its board (a call it holds is called by it: voice/board.rs).
-pub struct Client { pub s: State, pub inbox: Arc<Mutex<Vec<Event>>>, pub at: i64, pub machines_at: i64, pub boards_at: i64, pub id: String }
+pub struct Client { pub s: State, pub inbox: Arc<Mutex<Vec<Event>>>, pub at: i64, pub machines_at: i64, pub boards_at: i64, pub loaded_at: i64, pub id: String }
 const IDLE: i64 = 10 * 60000;
 /// How long a call waits for what a button started (a merge, an agent started); longer, it answers on a later look.
 const WAIT: u64 = 25;
+/// How old what a page's timer shows may be before it is read again: a read runs git and herdr for every repo, and a
+/// page asks every two seconds. What a click does reads again at once.
+pub const LOOK: i64 = 5000;
 static CLIENTS: Mutex<Option<HashMap<String, Arc<Mutex<Client>>>>> = Mutex::new(None);
 pub fn theme() -> &'static Theme { static T: std::sync::OnceLock<Theme> = std::sync::OnceLock::new(); T.get_or_init(Theme::web) }
 fn prefs_file() -> std::path::PathBuf { crate::store::files::data_dir().join("web-view.json") }
@@ -52,7 +55,7 @@ fn open() -> Client {
     // The filter shown on the filter row, the web's own as the terminal board keeps its own.
     s.show = p.at("show").as_u64().map(|n| (n as usize).min(crate::board::update::shows::SHOWS.len() - 1)).unwrap_or(0);
     s.folded = p.arr("folded").iter().filter_map(|x| x.as_str()).map(String::from).collect();
-    Client { s, inbox: Arc::new(Mutex::new(vec![])), at: 0, machines_at: 0, boards_at: 0, id: String::new() }
+    Client { s, inbox: Arc::new(Mutex::new(vec![])), at: 0, machines_at: 0, boards_at: 0, loaded_at: 0, id: String::new() }
 }
 pub fn client(id: &str) -> Arc<Mutex<Client>> {
     let key: String = id.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-').take(40).collect();
@@ -103,37 +106,11 @@ fn show_repo(c: &mut Client) {
     let id = crate::board::update::heads::group_id(&c.s, "", &c.s.web.chat_repo);
     if crate::board::update::coords::exists(&c.s, &id) { c.s.sel = id; }
 }
-/// The repos with a workspace open in herdr: the root of each pane's folder, read from herdr at most every few seconds.
-pub fn open_repos() -> Vec<std::path::PathBuf> {
-    static SEEN: Mutex<(i64, Vec<std::path::PathBuf>)> = Mutex::new((0, Vec::new()));
-    let now = crate::clock::now();
-    let mut g = SEEN.lock().unwrap();
-    if now - g.0 < 5000 && g.0 != 0 { return g.1.clone(); }
-    let panes = crate::herdr::Herdr::new(None).panes(None).unwrap_or_default();
-    g.1 = panes.iter().filter_map(|p| {
-        let at = if p.s("foreground_cwd").is_empty() { p.t("cwd") } else { p.t("foreground_cwd") };
-        if at.is_empty() { None } else { std::fs::canonicalize(crate::store::repos::primary_root(std::path::Path::new(&at))).ok() }
-    }).collect();
-    g.0 = now;
-    g.1.clone()
-}
-/// The folder of a repo the board knows that a herdr pane is in (its folder now, or that of what runs there); None for
-/// a pane in no git repo, one that is gone, or a name that is no pane's. A repo not seen before is named by this.
-fn repo_of_pane(pane: &str) -> Option<String> {
-    if pane.is_empty() || pane.len() > 40 || !pane.chars().all(|ch| ch.is_ascii_alphanumeric() || ":-_".contains(ch)) { return None; }
-    let p = crate::herdr::Herdr::new(None).pane_get(pane)?;
-    let at = if p.s("foreground_cwd").is_empty() { p.t("cwd") } else { p.t("foreground_cwd") };
-    if at.is_empty() { return None; }
-    let root = std::fs::canonicalize(crate::store::repos::primary_root(std::path::Path::new(&at))).ok()?;
-    if let Some(known) = crate::store::repos::known_repos().values().map(text).find(|d| std::fs::canonicalize(d).ok().as_deref() == Some(root.as_path())) { return Some(known); }
-    // A git repo not seen before is named now, as the first task added in it would (never the home folder).
-    if root == std::fs::canonicalize(crate::store::files::user_home()).ok()? || !crate::store::repos::is_repo(&root) { return None; }
-    crate::store::repos::repo_of(&root).ok().map(|(_, dir)| dir.display().to_string())
-}
 /// Everything read again: the tasks, the closer look at the selected one and the one the chat talks to.
 pub fn reload(c: &mut Client) {
     let wants = Wants { ids: vec![c.s.sel.clone(), c.s.reply_id.clone()], cwd: c.s.ctx.cwd.clone(), own_pane: String::new(), web: true, coord: crate::board::update::coords::wanted(&c.s), mine: None, looks: crate::board::update::coords::looks_wanted(&c.s), skills: String::new() };
     let d = load(&wants);
+    c.loaded_at = crate::clock::now();
     let fx = update(&mut c.s, Event::Loaded(Box::new(d)));
     effects(c, fx, false);
 }
@@ -218,7 +195,7 @@ pub fn call_with(client_id: &str, call: &str, args: Value, machine: &str, pcs: O
     let drive = args.s("role") == "drive";
     let watch = || Err::<Value, String>("This device can only watch.".into());
     match call {
-        "board" => { let now = crate::clock::now(); let fx = update(&mut c.s, Event::Tick(now)); effects(c, fx, true); Ok(snapshot(c, args.s("have"))) }
+        "board" => { let now = crate::clock::now(); let fx = update(&mut c.s, Event::Tick(now)); let old = crate::herdr::cli::fake().is_none() && now - c.loaded_at < LOOK; effects(c, fx, !old); Ok(snapshot(c, args.s("have"))) }
         "press" => { let draft = super::view::press(c, args.s("id"), drive)?; if args.s("id") == "scope" { picked(c); } super::going::settle(c, seen, ui, true); let mut o = snapshot(c, ""); o.as_object_mut().unwrap().insert("draft".into(), json!(draft)); Ok(o) }
         "send" => {
             if !drive { return watch(); }
@@ -288,7 +265,7 @@ pub fn call_with(client_id: &str, call: &str, args: Value, machine: &str, pcs: O
         // knows it. A pane in no repo the board knows leaves it where it is.
         "follow" => {
             if !drive { return watch(); }
-            if let Some(dir) = repo_of_pane(args.s("pane")) { set_repo(c, dir); }
+            if let Some(dir) = super::open::repo_of_pane(args.s("pane")) { set_repo(c, dir); }
             Ok(snapshot(c, ""))
         }
         // These only change what this page looks at: its selection, its filter, its folded headings.

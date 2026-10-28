@@ -2,7 +2,7 @@
 //! (proxy.rs); the two things added are the board's own pages and calls, all under one path the web UI does not use
 //! (`/herdr-projects/`), and one script line in the web UI's page. A fault of ours never breaks the web UI: whatever goes
 //! wrong on the way to the board, a request that is not the board's is still passed through. Who may use the board is
-//! whoever the web UI itself lets in: it is asked, with the caller's own headers, for every call. 127.0.0.1 only.
+//! whoever the web UI itself lets in: it is asked, with the caller's own headers, for every call, a call from another device on the network too: it listens on every address, as the web UI does.
 use super::proxy::{ask, bad, caller_headers, parse_request, pass, read_answer, read_head, connect, Answer, Head, DOWN};
 use crate::json::*;
 use std::io::Write;

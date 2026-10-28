@@ -289,9 +289,10 @@ The board is as protected as the web UI, by the web UI:
 - **A device the web UI paired to *watch*** can look at the board and change nothing: it can select, find, pick a filter on
   the filter row, put the grouping back to by status, and show or hide; it cannot send, approve, stop or archive.
 - The page's own files (scripts and styles) hold no task and are public, as the web UI's own files are.
-- **Private only.** The front door listens on `127.0.0.1` and nowhere else. The only way to it from another device is the
-  web UI's own private link (`tailscale serve`). A link open to the internet (Tailscale Funnel) is never pointed at it,
-  and nothing here ever makes one.
+- **On your network, behind the web UI's login.** In this fork the front door listens on every address, as Ovis does,
+  so a phone on the same network opens `http://<this machine>.local:7327/`. Every call is still asked of the web UI with
+  the caller's own token (Ovis answers `token_required` even to 127.0.0.1), so a device that has not logged in to the web
+  UI gets nothing. A link open to the internet (Tailscale Funnel) is never pointed at it, and nothing here ever makes one.
 
 ## Its two names
 

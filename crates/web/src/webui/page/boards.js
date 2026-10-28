@@ -53,9 +53,13 @@ async function pick(to, onPick) {
   draw(onPick);
   onPick(out);
 }
+// One look at a time: a timer that fires while the last look waits would queue another behind it.
+let looking = false;
 async function look(onPick) {
-  if (document.hidden) return;
-  const out = await get("boards");
+  if (document.hidden || looking) return;
+  looking = true;
+  let out;
+  try { out = await get("boards"); } finally { looking = false; }
   if (!out.ok || !Array.isArray(out.boards)) return;
   boards = out.boards; scope = out.scope ?? "";
   draw(onPick);

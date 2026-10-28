@@ -52,7 +52,8 @@ fn far(c: &Client, label: &str, m: &Remote, pcs: &[Pc]) -> (Value, Option<[usize
 pub fn boards(c: &mut Client) -> Value {
     let now = crate::clock::now();
     if now - c.boards_at >= ASK { c.boards_at = now; poll(c, false); }
-    reload(c);
+    // Read again only when what it has is older than a page's look may be (web.rs: LOOK).
+    if crate::herdr::cli::fake().is_some() || now - c.loaded_at >= super::web::LOOK { reload(c); }
     let pcs = c.s.web.pcs.clone().unwrap_or_default();
     let mine = with_coords(count(&c.s.data.items), c, "");
     let here = pcs.iter().find(|p| p.local).map(|p| p.name.clone()).filter(|n| !n.is_empty() && n != "local").unwrap_or_else(|| "This machine".into());

@@ -98,7 +98,7 @@ function draw() {
   // are typing into one of its boxes is not taken away by the task's status moving on.
   once("settings", snap.settings, () => { const host = part("task-host"), top = host.scrollTop, went = snap.settings?.show || 0, el = settingsEl(snap, { onSet: (id, name, value) => call("set", { id, name, value }), onApply: () => { applying = true; draw(); }, onAccounts: () => { managing = true; draw(); } }); part("settings-host").replaceChildren(...(el ? [el] : [])); host.scrollTop = top; if (el && went > wentTo) el.scrollIntoView({ block: "start" }); wentTo = went; });
   once("ask", snap.ask, () => part("ask-host").replaceChildren(...[askEl(snap.ask, press)].filter(Boolean)));
-  once("menu", menuOpen ? [snap.menu, snap.list.selected] : null, () => part("menu-host").replaceChildren(...(menuOpen ? [menuEl(snap, { onPress: press, onClose: () => { menuOpen = false; draw(); }, onFind: () => { finding = true; draw(); part("find").focus(); } })] : [])));
+  once("menu", menuOpen ? [snap.menu, snap.list.selected] : null, () => part("menu-host").replaceChildren(...(menuOpen ? [menuEl(snap, { onPress: press, onClose: () => { menuOpen = false; draw(); }, onFind: () => { finding = true; draw(); part("find").focus(); }, onAccounts: snap.role === "watch" ? null : () => { managing = true; draw(); } })] : [])));
   once("pick", picking ? [snap.flags.scope] : null, () => { if (picking) pickerEl(snap.flags.scope, { onPick: scopeTo, onClose: () => { picking = false; draw(); } }).then((el) => { if (picking && root) part("pick-host").replaceChildren(el); }); else part("pick-host").replaceChildren(); });
   // The form for an automation stays as typed while the board changes under it: made once, when it opens.
   once("add", adding ? "open" : null, () => part("add-host").replaceChildren(...(adding ? [automationEl({ repos: snap.list.head.repos || [], onClose: () => { adding = false; draw(); }, onSave: addAutomation })] : [])));
@@ -157,7 +157,9 @@ async function applyAccounts(body) {
   toast(part("toast-host"), { text: out.said || "Done.", kind: "" }, () => {});
   return "";
 }
-async function refresh() { if (!root || busy) return; take(await get("board", { have: mark })); }
+// One look at a time: a timer that fires while the last look waits would queue another full read behind it.
+let looking = false;
+async function refresh() { if (!root || busy || looking) return; looking = true; try { take(await get("board", { have: mark })); } finally { looking = false; } }
 // Asked again at once, whole: another machine's board was picked in the sidebar while the board is open.
 export function freshen() { if (root) { mark = ""; refresh(); } }
 // Something you did: sent, and drawn from the answer at once.

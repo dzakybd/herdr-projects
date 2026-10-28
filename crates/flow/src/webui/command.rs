@@ -63,7 +63,7 @@ pub fn main(args: &[String]) -> Value {
     let (to, door) = (web_ui(true), door_info());
     let links = to.as_ref().map(|w| link::look(w.port, door.as_ref().map(|d| d.i("port") as u16)));
     let mut lines = vec![found_line(to.as_ref())];
-    lines.push(match &door { Some(d) => format!("Front door: up at {}/ (this machine only)", address_of(d.i("port") as u16)), None => "Front door: not running".into() });
+    lines.push(match &door { Some(d) => format!("Front door: up at {}/ (on every address: a phone on your network too, logged in to the web UI)", address_of(d.i("port") as u16)), None => "Front door: not running".into() });
     if let Some(l) = &links {
         for e in &l.ours { lines.push(format!("Link: {} goes through the front door: the Board is in the web UI there", e.url)); }
         for e in &l.direct { lines.push(format!("Link: {} goes straight to the web UI: no Board there (`herdr-projects web-ui link`)", e.url)); }

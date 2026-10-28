@@ -89,6 +89,7 @@ fn another_machines_coordinator_is_gone_into_there_with_alt_o_and_enter_only_fol
 #[test]
 fn a_coordinator_that_asks_you_stands_under_needs_you_and_is_counted_and_a_coordinators_row_is_one_line() {
     sw::clock::set(None); // a test before this one in the program may have left a clock of its own: the times below are of the real one
+    sw::clock::set(Some(sw::clock::now())); // held, so a loaded machine does not turn 2m into 3m
     let now = sw::clock::now();
     let (_w, mut s) = far_board(json!({ "machine": { "state": "working", "doing": "Cleaning old worktrees", "began": now - 120000 },
         "project:gtm": { "state": "idle", "talk": [{ "you": false, "text": "Two PRs wait on CI. Want me to retry #11?" }], "at": now - 60000 } }), json!({}), json!([]));

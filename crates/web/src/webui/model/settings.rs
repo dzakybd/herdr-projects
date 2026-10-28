@@ -16,12 +16,23 @@ fn model_words(x: &Obj, list: &[Obj]) -> Option<Vec<Value>> {
     if models.is_empty() { return None; }
     Some(std::iter::once("none".to_string()).chain(models).map(|v| json!(v)).collect())
 }
+/// What a role's effort may be: `default` and the levels its program takes (for its model, where the program has them
+/// per model). Typed where the program names none.
+fn effort_words(x: &Obj, list: &[Obj]) -> Option<Vec<Value>> {
+    let role = x.s("name").split('.').next().unwrap_or("");
+    let value = |n: &str| list.iter().find(|r| r.s("name") == format!("{role}.{n}")).map(|r| text(r.at("value"))).unwrap_or_default();
+    let agent = crate::store::settings::values::agent_of(&value("agent"));
+    let model = match value("model").as_str() { "" | "none" => agent.model.clone(), m => m.to_string() };
+    let levels = crate::agents::efforts::levels(&agent.kind, &model, crate::agents::efforts::Ask::Kept)?.levels;
+    if levels.is_empty() { return None; }
+    Some(std::iter::once("default".to_string()).chain(levels).map(|v| json!(v)).collect())
+}
 /// One setting as a row of the page. An account is one of the folders there are, with the one it has now among them
 /// even when it is a path that is not.
 fn row_of(x: &Obj, list: &[Obj]) -> Value {
     let e = entry_of(x.s("name"));
-    let mut words = if x.s("name").ends_with(".model") { model_words(x, list) } else { words_of(x.s("name")) };
-    if let Some(ws) = words.as_mut() { if (x.s("name").ends_with(".account") || x.s("name").ends_with(".model")) && !ws.contains(x.at("value")) { ws.push(x.at("value").clone()); } }
+    let mut words = if x.s("name").ends_with(".model") { model_words(x, list) } else if x.s("name").ends_with(".effort") { effort_words(x, list) } else { words_of(x.s("name")) };
+    if let Some(ws) = words.as_mut() { if (x.s("name").ends_with(".account") || x.s("name").ends_with(".model") || x.s("name").ends_with(".effort")) && !ws.contains(x.at("value")) { ws.push(x.at("value").clone()); } }
     let from = [x.t("note"), x.t("later")].into_iter().filter(|w| !w.is_empty()).collect::<Vec<_>>().join(" · ");
     // An account says what it is (a login, or a gateway of its own), for the page to show beside the choice.
     let tags: Option<serde_json::Map<String, Value>> = words.as_ref().filter(|_| x.s("name").ends_with(".account")).map(|ws| ws.iter().map(|w| (text(w), json!(crate::agents::account::kind_of(&text(w))))).collect());

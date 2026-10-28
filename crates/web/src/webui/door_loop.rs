@@ -29,7 +29,7 @@ struct Open { port: u16, on: Arc<AtomicBool> }
 /// The port it had may still be held for a moment by the process it takes over from; then the first one; then any.
 fn listen(wants: &[(u16, u32)]) -> Option<TcpListener> {
     for (port, tries) in wants {
-        for n in 0..*tries { if let Ok(l) = TcpListener::bind(("127.0.0.1", *port)) { return Some(l); } if n + 1 < *tries { std::thread::sleep(std::time::Duration::from_millis(250)); } }
+        for n in 0..*tries { if let Ok(l) = TcpListener::bind(("0.0.0.0", *port)) { return Some(l); } if n + 1 < *tries { std::thread::sleep(std::time::Duration::from_millis(250)); } }
     }
     None
 }
