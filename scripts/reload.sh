@@ -7,6 +7,7 @@ here=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$here"
 cargo build --release
 pkill -f "$here/target/release/herdr-projects (keeper|keeper-work|serve|door)" 2>/dev/null || true
+sleep 3 # the hook starts nothing while a helper is still ending
 sh bin/run.sh hook
 sleep 6
 "$HOME/.herdr-projects/data/bin/herdr-projects" web-ui | sed -n 1,2p
