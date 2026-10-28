@@ -1,6 +1,7 @@
 //! The web board's settings page: every setting of the open task with its plain label and what it means, in the
 //! terminal page's order; changed and put back there; the task's own panel saying the same in words, its settings
-//! above the long texts; a refused value refused in the board's words; read-only for a watcher and an archived task.
+//! above the long texts; a refused value refused in the board's words; read-only for a watcher and an archived task. And the accounts sheet: accounts made, read and changed
+//! (core `agents::account_edit` and the `accounts` and `account-save` calls), refusing a path, a name there and shell injection.
 use crate::common;
 use common::board::{web, web_as};
 use common::*;
@@ -138,4 +139,106 @@ fn an_account_is_set_for_several_repos_at_once_and_the_reviewer_is_put_on_claude
     assert!(said.contains("Set work for worker, reviewer on 1 repo") && said.contains("proj reviewer"), "{said}");
     let s = web(&w, "pick", json!({ "id": id, "open": true }));
     assert_eq!((row(&s, "worker.account").s("value"), row(&s, "reviewer.account").s("value"), row(&s, "reviewer.agent").s("value")), ("work", "work", "claude"));
+fn accounts_are_listed_made_and_changed_on_the_page_the_cards_lists_follow_and_a_watcher_may_do_none_of_it() {
+    let w = world();
+    let id = w.add("A task");
+    web(&w, "pick", json!({ "id": id, "open": true }));
+    let dir = sw::store::files::user_home().join(".claude-accounts");
+    let save = |a: Value| web_as(&w, "test", "account-save", a);
+    let gw = |extra: Value| { let mut a = json!({ "new": true, "name": "gw", "type": "gateway", "baseUrl": "https://gw.example.com", "keyVar": "MY_KEY", "model": "m-one", "models": "m-one\nm-two", "context": "350000" }); a.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone()); a };
+    assert!(web_as(&w, "test", "accounts", json!({ "role": "watch" })).unwrap_err().contains("only watch"));
+    assert!(save(gw(json!({ "role": "watch" }))).unwrap_err().contains("only watch") && !dir.join("gw").exists());
+    for (bad, why) in [(json!({ "name": "../x" }), "name"), (json!({ "type": "" }), "Pick"), (json!({ "keyVar": "sk-ant-abc" }), "NAME"), (json!({ "models": ["a$(rm", "-rf", "~)"] }), "model"), (json!({ "context": "lots" }), "whole number")] {
+        let e = save(gw(bad.clone())).unwrap_err(); assert!(e.contains(why), "{bad}: {e}"); assert!(!dir.join("gw").exists() && !dir.join("x").exists());
+    }
+    // Made: the account list has it with its fields, and the open task's lists offer it, then its models.
+    let out = save(gw(json!({}))).unwrap();
+    assert_eq!(out.s("said"), "Account \"gw\" made.");
+    assert_eq!(out.at("accounts"), &json!([{ "name": "gw", "kind": "gateway", "gateway": { "baseUrl": "https://gw.example.com", "keyVar": "MY_KEY", "keyLiteral": false, "model": "m-one", "models": ["m-one", "m-two"], "context": 350000 } }]));
+    let values = |s: &Value, name: &str| row(s, name).arr("words").iter().map(|x| x.t("value")).collect::<Vec<_>>();
+    assert_eq!(values(&out, "worker.account"), ["none", "gw"]);
+    set(&w, &id, "worker.account", json!("gw"));
+    let out = save(gw(json!({ "new": false, "models": ["m-one", "m-three"] }))).unwrap();
+    assert_eq!(values(&out, "worker.model"), ["none", "m-one", "m-three"]);
+    assert!(save(gw(json!({}))).unwrap_err().contains("already"));
+    // A login: made; then a gateway turned into one only when confirmed.
+    save(json!({ "new": true, "name": "lg", "type": "login" })).unwrap();
+    assert_eq!(web_as(&w, "test", "accounts", json!({})).unwrap().arr("accounts").iter().map(|a| (a.t("name"), a.t("kind"))).collect::<Vec<_>>(), [("gw".to_string(), "gateway".to_string()), ("lg".to_string(), "login".to_string())]);
+    let to_login = |confirm: bool| save(json!({ "new": false, "name": "gw", "type": "login", "confirm": confirm }));
+    assert!(to_login(false).unwrap_err().contains("Confirm") && dir.join("gw/account.env").is_file());
+    to_login(true).unwrap();
+    assert!(!dir.join("gw/account.env").exists());
+    assert!(save(json!({ "new": false, "name": "nope", "type": "login" })).is_err());
+}
+
+fn gateway() -> sw::agents::account_edit::Gateway {
+    sw::agents::account_edit::Gateway { base_url: "https://gw.example.com".into(), key_var: "MY_KEY".into(), model: "m-one".into(), models: vec!["m-one".into(), "m-two".into()], context: Some(350000), key_literal: false }
+}
+
+#[test]
+fn a_gateway_is_made_read_and_changed_keeping_the_lines_it_does_not_own() {
+    use sw::agents::account_edit::*;
+    use std::os::unix::fs::PermissionsExt;
+    let _w = world();
+    use sw::store::files::user_home;
+    create("gw", Some(&gateway())).unwrap();
+    let env = user_home().join(".claude-accounts/gw/account.env");
+    assert_eq!(read("gw").unwrap(), gateway());
+    assert_eq!(std::fs::metadata(&env).unwrap().permissions().mode() & 0o777, 0o600);
+    assert_eq!((sw::agents::account::kind_of("gw"), sw::agents::account::models_of("gw")), ("gateway", vec!["m-one".to_string(), "m-two".to_string()]));
+    // A file written by hand: its comment, an `export`, a key written out and lines this does not own.
+    std::fs::write(&env, "# mine\nexport ANTHROPIC_BASE_URL='http://old'\nANTHROPIC_AUTH_TOKEN=\"sk-literal\"\nFOO=bar\nCLAUDE_CODE_AUTO_COMPACT_WINDOW=300000\nCLAUDE_CODE_MAX_CONTEXT_TOKENS=1000\nACCOUNT_MODELS=\"a b\"\n").unwrap();
+    let was = read("gw").unwrap();
+    assert_eq!((was.base_url.as_str(), was.key_var.as_str(), was.key_literal, was.models.clone(), was.context), ("http://old", "", true, vec!["a".to_string(), "b".to_string()], Some(1000)));
+    let next = Gateway { base_url: "https://new.example.com".into(), key_var: "NEW_KEY".into(), model: String::new(), models: vec!["a".into(), "c".into()], context: None, key_literal: false };
+    save_gateway("gw", &next).unwrap();
+    let text = std::fs::read_to_string(&env).unwrap();
+    assert_eq!(text, "# mine\nANTHROPIC_BASE_URL=\"https://new.example.com\"\nANTHROPIC_AUTH_TOKEN=\"$NEW_KEY\"\nFOO=bar\nCLAUDE_CODE_AUTO_COMPACT_WINDOW=300000\nACCOUNT_MODELS=\"a c\"\n");
+    assert_eq!(read("gw").unwrap(), next);
+    save_gateway("gw", &next).unwrap();
+    assert_eq!(std::fs::read_to_string(&env).unwrap(), text, "saved again as it is: nothing changes");
+    assert_eq!(std::fs::metadata(&env).unwrap().permissions().mode() & 0o777, 0o600);
+    assert!(std::fs::read_dir(env.parent().unwrap()).unwrap().all(|e| !e.unwrap().file_name().to_string_lossy().ends_with(".tmp")));
+}
+
+#[test]
+fn an_account_is_refused_for_a_path_for_a_name_there_and_for_a_value_that_would_inject_shell() {
+    use sw::agents::account_edit::*;
+    let _w = world();
+    use sw::store::files::user_home;
+    let accounts = user_home().join(".claude-accounts");
+    for bad in ["../x", "a/b", "", ".hid", "Up", "-x", "a b", &"a".repeat(33)] { assert!(create(bad, None).is_err(), "{bad:?}"); }
+    assert!(!user_home().join("x").exists());
+    create("one", None).unwrap();
+    assert!(create("one", None).unwrap_err().msg.contains("already"));
+    let g = gateway();
+    let worse = [
+        Gateway { models: vec!["a$(rm".into(), "-rf".into(), "~)".into()], ..g.clone() }, Gateway { models: vec!["a$(rm -rf ~)".into()], ..g.clone() }, Gateway { model: "a`id`".into(), ..g.clone() },
+        Gateway { base_url: "https://x.com\"; rm -rf ~; \"".into(), ..g.clone() }, Gateway { base_url: "ftp://x.com".into(), ..g.clone() }, Gateway { base_url: "https://x.com\nA=1".into(), ..g.clone() },
+        Gateway { key_var: "A B".into(), ..g.clone() }, Gateway { key_var: "1KEY".into(), ..g.clone() }, Gateway { key_var: "$(id)".into(), ..g.clone() }, Gateway { key_var: "sk-ant-abc".into(), ..g.clone() },
+        Gateway { key_var: String::new(), ..g.clone() }, Gateway { context: Some(0), ..g.clone() },
+    ];
+    for (n, bad) in worse.iter().enumerate() { assert!(create("bad", Some(bad)).is_err() && !accounts.join("bad").exists(), "{n}: {bad:?}"); assert!(save_gateway("one", bad).is_err(), "{n}"); }
+    assert!(!accounts.join("one/account.env").exists());
+    for path in ["../x", "..", "one/../one", "/etc"] { assert!(read(path).is_err() && save_gateway(path, &g).is_err() && make_login(path, true).is_err(), "{path}"); }
+}
+
+#[test]
+fn a_login_is_a_gateway_by_its_account_env_and_a_gateway_a_login_again_only_when_confirmed() {
+    use sw::agents::account::kind_of;
+    use sw::agents::account_edit::*;
+    let _w = world();
+    use sw::store::files::user_home;
+    create("lg", None).unwrap();
+    assert!(read("lg").is_err());
+    save_gateway("lg", &gateway()).unwrap();
+    let env = user_home().join(".claude-accounts/lg/account.env");
+    assert!(std::fs::read_to_string(&env).unwrap().starts_with("# Written by herdr-projects"));
+    assert_eq!(kind_of("lg"), "gateway");
+    create("plain", None).unwrap();
+    assert_eq!(list().iter().map(|a| (a.name.as_str(), a.kind, a.gateway.is_some())).collect::<Vec<_>>(), [("lg", "gateway", true), ("plain", "login", false)]);
+    assert!(make_login("lg", false).unwrap_err().msg.contains("Confirm") && env.is_file());
+    make_login("lg", true).unwrap();
+    assert_eq!((kind_of("lg"), env.exists()), ("login", false));
+    make_login("lg", false).unwrap();
 }

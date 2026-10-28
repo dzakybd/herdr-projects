@@ -23,3 +23,14 @@
 .sw-form-prompt { min-height: 6em; padding-top: var(--space-2, 8px); resize: vertical; } .sw-form-err { color: var(--sw-red, #e5534b); min-height: 1.2em; }
 .sw-acct-warn { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px); color: var(--sw-yellow, #d4a72c); } .sw-acct-warn svg { width: 16px; height: 16px; flex: none; }
 .sw-form-check { flex-direction: row; align-items: center; gap: var(--space-2, 8px); min-height: var(--touch-target, 40px); }
+/* The Accounts sheet (accounts.js): a list of accounts, a form, and the login command; full-width, 44px targets, no sideways scroll. */
+.sw-acc-body { min-width: 0; } .sw-acc-body * { max-width: 100%; box-sizing: border-box; }
+.sw-acc-list { display: flex; flex-direction: column; gap: var(--space-1, 4px); margin-top: var(--space-3, 12px); }
+.sw-acc-item { display: flex; align-items: center; gap: var(--space-2, 8px); width: 100%; min-height: 44px; padding: 0 var(--space-3, 12px); border: var(--hairline, 1px) solid var(--sw-line); border-radius: var(--radius-md, 8px); background: none; color: var(--sw-text); font: inherit; text-align: left; cursor: pointer; }
+.sw-acc-item svg, .sw-acc-title svg { width: 16px; height: 16px; flex: none; } .sw-acc-item .sw-set-from { margin: 0 0 0 auto; }
+.sw-acc-name, .sw-acc-title { min-width: 0; overflow-wrap: anywhere; font-weight: var(--fw-semibold, 600); } .sw-acc-title { display: flex; align-items: center; gap: var(--space-2, 8px); margin: var(--space-2, 8px) 0 0; }
+.sw-acc-body .sw-set-box, .sw-acc-body .sw-set-pick, .sw-acc-body .sw-act { min-height: 44px; } .sw-acc-body .sw-form-check input { width: 22px; height: 22px; flex: none; }
+.sw-acc-chips { display: flex; flex-wrap: wrap; gap: var(--space-1, 4px); margin-top: var(--space-2, 8px); } .sw-acc-chips:empty { display: none; }
+.sw-acc-chip { padding: 2px var(--space-2, 8px); border: var(--hairline, 1px) solid var(--sw-line); border-radius: var(--radius-pill, 999px); font-size: var(--fs-sm, 13px); overflow-wrap: anywhere; }
+.sw-acc-cmdrow { display: flex; flex-direction: column; gap: var(--space-2, 8px); } .sw-acc-cmd { display: block; padding: var(--space-2, 8px) var(--space-3, 12px); border-radius: var(--radius-md, 8px); background: var(--bg-input, #1c1916); font-size: var(--fs-sm, 13px); overflow-wrap: anywhere; user-select: all; }
+.sw-acc-said { color: var(--sw-green, #3fb950); } .sw-accounts-manage { margin-left: auto; min-height: 44px; }

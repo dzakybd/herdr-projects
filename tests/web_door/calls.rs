@@ -34,7 +34,7 @@ fn page_calls() -> (BTreeSet<String>, BTreeSet<String>) {
 fn board_calls() -> BTreeSet<String> {
     let text = source("crates/web/src/webui/web.rs");
     let body = text.split("pub fn call_with(").nth(1).unwrap().split("\n}\n").next().unwrap();
-    caught(r#"(?m)^\s*((?:"[\w/]+"\s*\|?\s*)+)=>"#, body).iter().flat_map(|arm| caught(r#""([\w/]+)""#, &arm[0])).map(|c| c[0].clone()).collect()
+    caught(r#"(?m)^\s*((?:"[\w/-]+"\s*\|?\s*)+)=>"#, body).iter().flat_map(|arm| caught(r#""([\w/-]+)""#, &arm[0])).map(|c| c[0].clone()).collect()
 }
 fn door() -> (World, Up) {
     let w = world();
