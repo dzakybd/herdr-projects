@@ -82,5 +82,7 @@ pub fn auto_panel_of(s: &mut State, t: &Theme, a: &Obj) -> Value {
 /// A coordinator whole (board/view/panel/coord.rs): its chat, and its autopilot while that is on.
 pub fn coord_panel_of(s: &mut State, c: &crate::board::update::coords::Target) -> Value {
     let lines = crate::board::view::panel::coord::coord_panel(s, c, WIDE, true);
-    json!({ "id": s.sel, "title": c.name, "task": false, "coordinator": true, "parts": parts_of(&lines) })
+    // Its settings changed since it started: what it runs on and what a new one would, for the page to offer the new one.
+    let stale = crate::board::update::coords::look_of(s, c).filter(|l| l.stale && c.host.is_empty()).and_then(|l| l.def.clone()).map(|d| crate::coordinator::who::describe(Some(&d)));
+    json!({ "id": s.sel, "title": c.name, "task": false, "coordinator": true, "stale": stale, "to": c.to, "parts": parts_of(&lines) })
 }

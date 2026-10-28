@@ -231,6 +231,14 @@ pub fn call_with(client_id: &str, call: &str, args: Value, machine: &str, pcs: O
             set_repo(c, text(dir));
             Ok(snapshot(c, ""))
         }
+        // A new coordinator, on what its settings say now (the CLI's `coordinator new`): its level is the panel's `to`.
+        "coordinator-new" => {
+            if !drive { return watch(); }
+            let to = args.s("to");
+            if !(to.is_empty() || to == "machine" || to.strip_prefix("project:").map(|r| !r.is_empty() && crate::store::repos::known_repos().contains_key(r)).unwrap_or(false)) { return Err("That is no coordinator of this machine.".into()); }
+            crate::coordinator::requests::fresh(None, crate::coordinator::co::Co::of(&crate::herdr::cli::current_socket(), to)).map_err(|e| e.msg)?;
+            let mut o = snapshot(c, ""); o.as_object_mut().unwrap().insert("said".into(), json!("A new coordinator is starting on its new settings.")); Ok(o)
+        }
         // An automation made on the page, as `herdr-projects automations add` makes it: its name, what each task is to do, when,
         // and in which repo. A schedule the board cannot read is refused in its own words, for the form to show.
         "automation" => {

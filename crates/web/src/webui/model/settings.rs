@@ -35,6 +35,11 @@ fn row_of(x: &Obj, list: &[Obj]) -> Value {
         "hint": if words.is_some() { String::new() } else { crate::board::view::panel::page::value_words(x) },
     });
     if let Some(t) = tags { row["tags"] = json!(t); }
+    // An account stands on Claude Code only: the page says which program the role runs, to warn where it is another.
+    if x.s("name").ends_with(".account") {
+        let role = x.s("name").split('.').next().unwrap_or("");
+        if let Some(a) = list.iter().find(|r| r.s("name") == format!("{role}.agent")) { row["program"] = json!(crate::store::settings::values::agent_of(&text(a.at("value"))).kind); }
+    }
     if x.b("coordRow") { row["whose"] = json!("this coordinator"); } // on a coordinator's page: its own row, among the place's under it
     row
 }

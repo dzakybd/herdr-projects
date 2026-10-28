@@ -36,6 +36,8 @@ export function panelEl(snap, handlers) {
       h("button.icon-button.sw-panel-back", { type: "button", "aria-label": "Back to the list", title: "Back to the list", onclick: handlers.onClose }, h("span.sw-narrow", icon("back")), h("span.sw-wide", icon("close"))),
       h("h3.sw-panel-title", p.tag ? h("span.sw-id", p.tag + " ") : null, p.title || "(no title)")),
     actionsEl(snap, handlers),
+    // A coordinator keeps what it started with: after its settings changed, a new one is what runs on them.
+    p.stale ? h("div.sw-acct-warn.sw-stale", icon("alert"), h("span", `It runs on its old settings. A new one runs on ${p.stale}.`), h("button.btn.sw-act", { type: "button", onclick: () => handlers.onNew?.(p.to || "") }, "Start a new one")) : null,
     h("div.sw-parts", p.parts.map((part) => h("section.sw-part",
       h(`h4.sw-part-head${part.color ? `.sw-c-${part.color}` : ""}`, part.head),
       h("dl.sw-facts", part.items.map((x) => item(x, handlers.onGo)))))));
@@ -76,7 +78,8 @@ function accountsEl(rows, models, whose, canSet, onSet) {
     return h(`div.sw-acct${x.own ? ".is-own" : ""}`,
       h("div.sw-acct-top", h("span.sw-acct-label", icon(ic), label), control(x, canSet, onSet)),
       h("p.sw-set-from.sw-acct-tag", h("span.sw-acct-say", icon(kic), h("span", say)), x.own && canSet ? putBack(x, onSet) : null),
-      model(x));
+      x.program && x.program !== "claude" ? h("p.sw-set-from.sw-acct-warn", icon("alert"), h("span", `Runs on ${x.program}: an account is for Claude Code only.`),
+        canSet ? h("button.sw-set-back", { type: "button", onclick: () => onSet(`${x.name.split(".")[0]}.agent`, "claude") }, "Use Claude") : null) : model(x));
   };
   return h("section.sw-accounts", h("h4.sw-accounts-head", icon("user"), "Accounts", h("span.sw-settings-note", `which Claude account runs each role, for ${whose}`)), rows.map(row));
 }

@@ -103,3 +103,23 @@ fn an_automation_is_made_on_the_page_and_a_name_or_schedule_the_board_cannot_tak
     let ok = made(json!({ "name": "Check my pull requests", "prompt": "Look at the reviews on my pull requests", "schedule": "daily 09:00", "repo": "proj", "research": true })).unwrap();
     assert!(ok.s("said").contains("Added the automation \"Check my pull requests\""), "{}", ok.s("said"));
 }
+
+#[test]
+fn an_accounts_row_says_which_program_its_role_runs_so_the_page_can_warn_where_it_is_not_claude() {
+    let w = world();
+    let id = w.add("Look into the logs");
+    let s = web(&w, "pick", json!({ "id": id, "open": true }));
+    assert_eq!((row(&s, "worker.account").s("program"), row(&s, "reviewer.account").s("program")), ("claude", "codex"));
+    let s = set(&w, &id, "reviewer.agent", json!("claude"));
+    assert_eq!(row(&s, "reviewer.account").s("program"), "claude");
+    assert!(row(&s, "worker.effort").get("program").is_none(), "only an account row says it");
+}
+
+#[test]
+fn a_new_coordinator_is_asked_for_only_for_a_level_of_this_machine_and_never_by_a_watcher() {
+    let w = world();
+    w.add("A task");
+    assert!(web_as(&w, "test", "coordinator-new", json!({ "to": "project:no-such-repo" })).unwrap_err().contains("no coordinator"));
+    assert!(web_as(&w, "test", "coordinator-new", json!({ "to": "../../x" })).unwrap_err().contains("no coordinator"));
+    assert!(web_as(&w, "test", "coordinator-new", json!({ "to": "machine", "role": "watch" })).unwrap_err().contains("only watch"));
+}

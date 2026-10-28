@@ -21,4 +21,5 @@
 @media (prefers-reduced-motion: no-preference) { .sw-bdot.sw-c-yellow::after { animation: sidebar-breathe var(--dur-breathe, 2.4s) steps(6) infinite; } }
 .sw-form-row { display: flex; flex-direction: column; gap: var(--space-1, 4px); margin-top: var(--space-3, 12px); } .sw-form-row .sw-set-box, .sw-form-row .sw-set-pick { width: 100%; max-width: none; flex: none; }
 .sw-form-prompt { min-height: 6em; padding-top: var(--space-2, 8px); resize: vertical; } .sw-form-err { color: var(--sw-red, #e5534b); min-height: 1.2em; }
+.sw-acct-warn { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2, 8px); color: var(--sw-yellow, #d4a72c); } .sw-acct-warn svg { width: 16px; height: 16px; flex: none; }
 .sw-form-check { flex-direction: row; align-items: center; gap: var(--space-2, 8px); min-height: var(--touch-target, 40px); }
