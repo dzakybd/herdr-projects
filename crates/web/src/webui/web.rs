@@ -231,6 +231,23 @@ pub fn call_with(client_id: &str, call: &str, args: Value, machine: &str, pcs: O
             set_repo(c, text(dir));
             Ok(snapshot(c, ""))
         }
+        // An automation made on the page, as `herdr-projects automations add` makes it: its name, what each task is to do, when,
+        // and in which repo. A schedule the board cannot read is refused in its own words, for the form to show.
+        "automation" => {
+            if !drive { return watch(); }
+            let name = args.s("name").trim().to_string();
+            if name.is_empty() { return Err("Give the automation a name.".into()); }
+            let mut flags = Obj::new();
+            flags.insert("prompt".into(), json!(args.s("prompt").trim()));
+            flags.insert("schedule".into(), json!(args.s("schedule").trim()));
+            if !args.s("repo").is_empty() { flags.insert("repo".into(), json!(args.s("repo"))); }
+            if args.b("research") { flags.insert("research".into(), json!(true)); }
+            let (_, said) = crate::automations::command::automations_command(&["add".to_string(), name], &flags, std::path::Path::new(&c.s.ctx.cwd)).map_err(|e| e.msg)?;
+            reload(c);
+            let mut o = snapshot(c, "");
+            o.as_object_mut().unwrap().insert("said".into(), json!(said));
+            Ok(o)
+        }
         // The web UI's page moved to another pane (a workspace was clicked): the board follows to its repo, where the board
         // knows it. A pane in no repo the board knows leaves it where it is.
         "follow" => {

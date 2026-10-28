@@ -19,3 +19,6 @@
 .sw-bdot.is-off::after { content: ""; width: var(--space-2, 8px); height: var(--space-2, 8px); border-radius: var(--radius-pill, 999px); box-sizing: border-box; border: calc(var(--hairline, 1px) * 2) solid currentColor; }
 /* Work going on breathes as the web UI's working dot does (its own steps, where it has them). */
 @media (prefers-reduced-motion: no-preference) { .sw-bdot.sw-c-yellow::after { animation: sidebar-breathe var(--dur-breathe, 2.4s) steps(6) infinite; } }
+.sw-form-row { display: flex; flex-direction: column; gap: var(--space-1, 4px); margin-top: var(--space-3, 12px); } .sw-form-row .sw-set-box, .sw-form-row .sw-set-pick { width: 100%; max-width: none; flex: none; }
+.sw-form-prompt { min-height: 6em; padding-top: var(--space-2, 8px); resize: vertical; } .sw-form-err { color: var(--sw-red, #e5534b); min-height: 1.2em; }
+.sw-form-check { flex-direction: row; align-items: center; gap: var(--space-2, 8px); min-height: var(--touch-target, 40px); }

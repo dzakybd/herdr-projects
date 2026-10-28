@@ -48,7 +48,7 @@ pub fn review_once(id: &str, g: &mut Guard, text: &str, change: Option<&Value>, 
     let who = start::role_of("reviewer", &|n| ch.at(n).clone());
     let (now_agent, stand_in) = reviewer_now(&t, ch);
     let on = agent_of(&now_agent);
-    let (mut rkind, mut rmodel, mut reffort, mut by) = (on.kind.clone(), if on.kind == who.kind { who.model.clone() } else { on.model.clone() }, who.effort.clone(), now_agent.clone());
+    let (mut rkind, mut rmodel, mut reffort, mut by) = (on.kind.clone(), crate::agents::account::model_for(&on.kind, &on.model, &crate::json::text(ch.at("reviewer.model"))), who.effort.clone(), now_agent.clone());
     if !installed::installed(&rkind) && installed::installed(t.s("agent")) { rkind = t.t("agent"); rmodel = String::new(); reffort = String::new(); by = rkind.clone(); }
     // A stand-in for a program that is not installed is a hand-over like any other.
     if !stand_in.is_empty() { g.set(|t| { let h = log_handover(t, "reviewer", ch.s("reviewer.agent"), &now_agent, &format!("{stand_in} is not installed here")); t.put("reviewerOn", now_agent.clone()); t.put("msg", handover_line(&h)); })?; }

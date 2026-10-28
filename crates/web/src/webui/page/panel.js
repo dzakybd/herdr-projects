@@ -57,7 +57,7 @@ function setRow(x, whose, canSet, onSet) {
   return h(`div.sw-set${x.own ? ".is-own" : ""}`,
     h("div.sw-set-top", h("span.sw-set-label", x.label), control(x, canSet, onSet)),
     x.means ? h("p.sw-set-means", x.words ? `On: ${x.means}.` : `Means: ${x.means}.`) : null, // a typed value has no "on": what it is
-    h("p.sw-set-from", [x.own ? `* ${whose} only` : "", x.from].filter(Boolean).join(" · "), h("span.sw-set-name", `${x.own || x.from ? " · " : ""}${x.name}`),
+    h("p.sw-set-from", [x.own ? `* ${x.whose || whose} only` : "", x.from].filter(Boolean).join(" · "), h("span.sw-set-name", `${x.own || x.from ? " · " : ""}${x.name}`),
       x.own && canSet ? putBack(x, onSet) : null));
 }
 // Which Claude account runs each role: stood out at the top, where a phone does not scroll past eighty rows to find it.

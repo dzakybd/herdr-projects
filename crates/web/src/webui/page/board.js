@@ -7,11 +7,11 @@ import { h, icon, get, post } from "./dom.js";
 import { listEl } from "./list.js";
 import { panelEl, settingsEl } from "./panel.js";
 import { chatEl } from "./chat.js";
-import { askEl, menuEl, pickerEl, toast, trapEscape } from "./sheets.js";
+import { askEl, automationEl, menuEl, pickerEl, toast, trapEscape } from "./sheets.js";
 import { goTo } from "./talk.js";
 
 let root = null, timer = null, closing = null, snap = null, mark = "", busy = false;
-let menuOpen = false, picking = false, finding = false, seenMsg = -1, seenGo = null, chat = null, untrap = null, wentTo = 0;
+let menuOpen = false, picking = false, adding = false, finding = false, seenMsg = -1, seenGo = null, chat = null, untrap = null, wentTo = 0;
 const drawn = { list: "", panel: "", settings: "", ask: "", menu: "", chips: "", shows: "", pick: "" };
 const part = (name) => root.querySelector(`.sw-${name}`);
 
@@ -97,6 +97,8 @@ function draw() {
   once("ask", snap.ask, () => part("ask-host").replaceChildren(...[askEl(snap.ask, press)].filter(Boolean)));
   once("menu", menuOpen ? [snap.menu, snap.list.selected] : null, () => part("menu-host").replaceChildren(...(menuOpen ? [menuEl(snap, { onPress: press, onClose: () => { menuOpen = false; draw(); }, onFind: () => { finding = true; draw(); part("find").focus(); } })] : [])));
   once("pick", picking ? [snap.flags.scope] : null, () => { if (picking) pickerEl(snap.flags.scope, { onPick: scopeTo, onClose: () => { picking = false; draw(); } }).then((el) => { if (picking && root) part("pick-host").replaceChildren(el); }); else part("pick-host").replaceChildren(); });
+  // The form for an automation stays as typed while the board changes under it: made once, when it opens.
+  once("add", adding ? "open" : null, () => part("add-host").replaceChildren(...(adding ? [automationEl({ repos: snap.list.head.repos || [], onClose: () => { adding = false; draw(); }, onSave: addAutomation })] : [])));
   part("find-row").hidden = !finding;
   chat.update(snap);
   if (snap.msg && snap.msg.n !== seenMsg) { seenMsg = snap.msg.n; toast(part("toast-host"), snap.msg, () => press("back")); }
@@ -131,6 +133,14 @@ function followPane() {
   const pane = new URLSearchParams(location.search).get("pane") || "";
   if (pane && pane !== followed && !busy) { followed = pane; call("follow", { pane }); }
 }
+// An automation from the form: made, or why not (the form shows it).
+async function addAutomation(body) {
+  const out = await post("automation", body);
+  if (!out.ok) return out.msg || "That did not work.";
+  adding = false; take(out); draw();
+  toast(part("toast-host"), { text: out.said || "Automation added.", kind: "" }, () => {});
+  return "";
+}
 async function refresh() { if (!root || busy) return; take(await get("board", { have: mark })); }
 // Asked again at once, whole: another machine's board was picked in the sidebar while the board is open.
 export function freshen() { if (root) { mark = ""; refresh(); } }
@@ -155,7 +165,7 @@ async function dock() {
 
 export function openBoard({ onClose }) {
   if (root) return;
-  closing = onClose; snap = null; mark = ""; seenGo = null; seenMsg = -1; menuOpen = false; picking = false; finding = false;
+  closing = onClose; snap = null; mark = ""; seenGo = null; seenMsg = -1; menuOpen = false; picking = false; adding = false; finding = false;
   for (const k of Object.keys(drawn)) drawn[k] = "";
   chat = chatEl({ onSend: async (text, delegate, to) => { const out = await call("send", { text, delegate, to }); return !out.ok || !!out.kept; }, onPress: press, onDock: dock });
   let wait = null;
@@ -165,6 +175,7 @@ export function openBoard({ onClose }) {
       h("button.icon-button.sw-back", { type: "button", "aria-label": "Close the board", title: "Close the board", onclick: () => (chat.full() ? chat.full(false) : closing?.()) }, icon("back")),
       h("h2.sw-name", "Board"), h("span.sw-where"),
       h("span.sw-head-space"),
+      h("button.icon-button", { type: "button", "aria-label": "Add an automation", title: "Add an automation", "aria-haspopup": "dialog", onclick: () => { adding = true; draw(); } }, icon("plus")),
       h("button.icon-button", { type: "button", "aria-label": "Find tasks", title: "Find tasks", onclick: () => { finding = !finding; draw(); if (finding) find.focus(); else if (snap?.flags.filter) { find.value = ""; call("find", { text: "" }); } } }, icon("find")),
       h("button.icon-button", { type: "button", "aria-label": "More", title: "More", "aria-haspopup": "dialog", onclick: () => { menuOpen = true; draw(); } }, icon("more"))),
     // One row; the wheel scrolls it sideways where it does not fit (a mouse has no sideways swipe).
@@ -175,7 +186,7 @@ export function openBoard({ onClose }) {
     h("div.sw-body", h("div.sw-list-host"), h("div.sw-task-host", h("div.sw-panel-host"), h("div.sw-settings-host"))),
     h("div.sw-toast-host", { "aria-live": "polite" }),
     chat.el,
-    h("div.sw-ask-host"), h("div.sw-menu-host"), h("div.sw-pick-host"));
+    h("div.sw-ask-host"), h("div.sw-menu-host"), h("div.sw-pick-host"), h("div.sw-add-host"));
   document.body.append(root);
   // On a phone the Board entry is in the web UI's drawer: the drawer closes as it does when you pick a pane there.
   try { document.querySelector(".scrim.is-open")?.click(); } catch {}
@@ -183,7 +194,7 @@ export function openBoard({ onClose }) {
   // (hidden as its Hide button hides it, while nothing is typed or searched), then the board itself. In the web UI's own
   // chat docked under the board (its box, its menus), Escape is the web UI's.
   untrap = trapEscape(() => {
-    if (snap?.ask) return press("back"); if (menuOpen || picking) { menuOpen = picking = false; return draw(); } if (chat.full()) return chat.full(false);
+    if (snap?.ask) return press("back"); if (menuOpen || picking || adding) { menuOpen = picking = adding = false; return draw(); } if (chat.full()) return chat.full(false);
     if (snap?.panel) return call("pick", { id: snap.list.selected, open: false });
     if (snap?.chat?.open && snap.chat.text && !finding && !chat.typing()) return press("chatMessage");
     closing?.();

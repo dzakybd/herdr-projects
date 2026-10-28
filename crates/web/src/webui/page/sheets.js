@@ -48,3 +48,21 @@ export function toast(host, msg, onDismiss) {
 }
 // `theirs(e)`: an Escape that is the web UI's own (in its chat's box or its menus under a docked chat): left to it.
 export const trapEscape = (fn, theirs = () => false) => { const on = (e) => { if (e.key === "Escape" && !theirs(e)) { e.stopPropagation(); fn(); } }; document.addEventListener("keydown", on, true); return () => document.removeEventListener("keydown", on, true); };
+// A new automation: a name, what each task is to do, when, and in which repo (docs/automations.md). `onSave` answers "" when
+// it was made, else why not, which stays in the sheet: the board reads the schedule's words, and says when it cannot.
+const WHEN = ["daily 09:00", "mon,tue,wed,thu,fri 09:00", "mon 09:00", "every 2h", 'cron "0 9 * * 1-5"'];
+export function automationEl({ repos, onSave, onClose }) {
+  const name = h("input.sw-set-box", { type: "text", placeholder: "Check my pull requests", "aria-label": "Name", autocomplete: "off" });
+  const prompt = h("textarea.sw-set-box.sw-form-prompt", { rows: 4, placeholder: "What each task is to do, in words", "aria-label": "What each task is to do" });
+  const when = h("input.sw-set-box", { type: "text", list: "sw-when", value: WHEN[0], "aria-label": "When", autocomplete: "off", spellcheck: false });
+  const repo = h("select.sw-set-pick", { "aria-label": "Repo" }, repos.map((r) => h("option", { value: r.name, selected: r.now }, r.name)));
+  const only = h("input", { type: "checkbox", id: "sw-only" });
+  const err = h("p.sw-set-from.sw-form-err", { role: "alert" });
+  const save = h("button.btn.btn-primary.sw-act", { type: "button", onclick: async () => { save.disabled = true; err.textContent = (await onSave({ name: name.value, prompt: prompt.value, schedule: when.value, repo: repo.value, research: only.checked })) || ""; save.disabled = false; } }, "Add");
+  const row = (label, el) => h("label.sw-form-row", h("span.sw-acct-label", label), el);
+  return h("div.sw-scrim", { onclick: (e) => { if (e.target === e.currentTarget) onClose(); } }, h("div.sw-sheet", { role: "dialog", "aria-modal": "true", "aria-label": "Add an automation" },
+    h("header.sw-menu-head", h("span.sw-menu-title", "Add an automation"), h("button.icon-button", { type: "button", "aria-label": "Close", onclick: onClose }, icon("close"))),
+    h("p.sw-set-means", "Each time it fires, the board adds a task and puts an agent on it."),
+    row("Name", name), row("Task", prompt), row("When", when), h("datalist", { id: "sw-when" }, WHEN.map((w) => h("option", { value: w }))), row("Repo", repo),
+    h("label.sw-form-row.sw-form-check", only, h("span", "Only report: change nothing in the repo")), err, h("div.sw-ask-keys", h("button.btn.sw-act", { type: "button", onclick: onClose }, "Cancel"), save)));
+}

@@ -91,3 +91,15 @@ fn the_repo_new_tasks_go_to_is_picked_on_the_page_among_the_repos_the_board_know
     // A pane that is no pane's name, or none that herdr has, leaves it where it was.
     for bad in ["", "../../x", "w9:p9"] { assert_eq!(web(&w, "follow", json!({ "pane": bad })).at("list").at("head").s("where"), "proj", "{bad}"); }
 }
+
+#[test]
+fn an_automation_is_made_on_the_page_and_a_name_or_schedule_the_board_cannot_take_is_refused() {
+    let w = world();
+    w.add("A task");
+    let made = |args: Value| web_as(&w, "test", "automation", args);
+    assert!(made(json!({ "name": " ", "prompt": "x", "schedule": "daily 09:00" })).unwrap_err().contains("name"));
+    assert!(made(json!({ "name": "Late", "prompt": "x", "schedule": "whenever it suits" })).is_err());
+    assert!(made(json!({ "name": "Look", "prompt": "x", "schedule": "daily 09:00", "role": "watch" })).unwrap_err().contains("only watch"));
+    let ok = made(json!({ "name": "Check my pull requests", "prompt": "Look at the reviews on my pull requests", "schedule": "daily 09:00", "repo": "proj", "research": true })).unwrap();
+    assert!(ok.s("said").contains("Added the automation \"Check my pull requests\""), "{}", ok.s("said"));
+}

@@ -3,7 +3,7 @@
 //! with its plain label, what it means, its value, whether it is set for this task only, and what it may be. Nothing is decided
 //! here: a change goes back through the board's own save (webui/web.rs: set_setting).
 use crate::board::state::{Editing, State, Whose};
-use crate::board::update::edit::{head_scope, rows, value_say, words_of};
+use crate::board::update::edit::{rows, value_say, whose_here, words_of};
 use crate::json::*;
 use crate::store::settings_list::entry_of;
 
@@ -35,17 +35,25 @@ fn row_of(x: &Obj, list: &[Obj]) -> Value {
         "hint": if words.is_some() { String::new() } else { crate::board::view::panel::page::value_words(x) },
     });
     if let Some(t) = tags { row["tags"] = json!(t); }
+    if x.b("coordRow") { row["whose"] = json!("this coordinator"); } // on a coordinator's page: its own row, among the place's under it
     row
 }
-/// Your settings, or your entry for a repo, for the heading that is open: the rows of the terminal board's page for it
-/// (`whose_here`), read now. Null for a heading of another machine, whose are changed there.
+/// The page a heading opens (the terminal board's, `whose_here`): a coordinator's own settings (its account and model, its
+/// autopilot goal) with, under them, yours or your entry for its repo, which a machine's row has too. Err for another
+/// machine's, whose are changed there.
+pub fn page_of(s: &State) -> Result<Whose, String> {
+    Ok(match whose_here(s)? { Whose::Coord(k, then) => Whose::Coord(k, if then.is_empty() { "you".into() } else { then }), w => w })
+}
+/// Your settings, or your entry for a repo, or a coordinator's own with them, for the heading that is open: the rows of
+/// the terminal board's page for it, read now, each once (a coordinator's own stands first). Null where there is no page.
 pub fn scope_settings_of(s: &mut State) -> Value {
-    let Ok(w) = head_scope(s) else { return Value::Null };
+    let Ok(w) = page_of(s) else { return Value::Null };
     let was = (s.editing.replace(Editing { id: s.sel.clone(), whose: w.clone(), ..Default::default() }), s.data.mine.take());
     s.data.mine = Some((w.wanted(), crate::board::data::mine(&w.wanted())));
-    let list = rows(s);
+    let mut seen = std::collections::HashSet::new();
+    let list: Vec<Obj> = rows(s).into_iter().filter(|x| seen.insert(x.t("name"))).collect();
     (s.editing, s.data.mine) = was;
-    let whose = if let Whose::Repo(_) = w { "this project" } else { "your defaults" };
+    let whose = match &w { Whose::Coord(..) => "this coordinator", Whose::Repo(_) => "this project", _ => "your defaults" };
     json!({ "id": s.sel, "whose": whose, "canSet": true, "show": s.web.show_settings, "rows": list.iter().map(|x| row_of(x, &list)).collect::<Vec<_>>() })
 }
 /// `auto`: `r` is an automation. None for a row that has no settings (a message that waits for the Coordinator).

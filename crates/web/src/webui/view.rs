@@ -119,11 +119,13 @@ pub fn set_setting(c: &mut Client, id: &str, name: &str, value: Option<String>) 
     if crate::board::update::heads::is_head(id) {
         if c.s.sel != id { c.s.flash("That heading is no longer the one that is open. Nothing was changed.", Ink::Yellow); return Ok(()); }
         if crate::store::settings_list::entry_of(name).is_none() { return Err(format!("Unknown setting \"{name}\".")); }
-        let w = crate::board::update::edit::head_scope(&c.s)?;
-        let was = c.s.editing.replace(crate::board::state::Editing { id: id.into(), whose: w, ..Default::default() });
+        let w = super::model::settings::page_of(&c.s)?;
+        // The page's rows are read for where the value goes: a coordinator's own row to the coordinator, the rest to its place.
+        let was = (c.s.editing.replace(crate::board::state::Editing { id: id.into(), whose: w.clone(), ..Default::default() }), c.s.data.mine.take());
+        c.s.data.mine = Some((w.wanted(), crate::board::data::mine(&w.wanted())));
         let mut fx: Vec<Effect> = vec![];
         crate::board::update::edit::save(&mut c.s, name, value, &mut fx);
-        c.s.editing = was;
+        (c.s.editing, c.s.data.mine) = was;
         effects(c, fx, false);
         return Ok(());
     }
