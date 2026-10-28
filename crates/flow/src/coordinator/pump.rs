@@ -99,7 +99,7 @@ fn ensure(api: &Herdr, co: &Co) -> Res<(Obj, bool)> {
     // The rules ride on no launch flag: the program reads them from its folder, so they are told once.
     let (reads, launch) = put_rules(co, &k, &text)?;
     if co.is_top() { let _ = std::fs::remove_file(dir_of(co).join("rules.md")); }
-    installed::pre_trust(&k, &home(co), if run.b("access") { run.s("access") } else { "full" }, run.s("account"));
+    installed::pre_trust_owned(&k, &home(co), if run.b("access") { run.s("access") } else { "full" }, run.s("account"), &crate::store::settings::lookup::setting_text("trust.folders", None));
     let taken: Vec<String> = api.agents()?.iter().filter(|x| x.s("pane_id") != pane.s("pane_id")).map(|x| x.t("name")).collect();
     let mut name = co.agent_name();
     let mut n = 2;

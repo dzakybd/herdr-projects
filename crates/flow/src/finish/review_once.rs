@@ -18,6 +18,7 @@ use crate::store::handovers::{handover_line, last_handover, log_handover};
 use crate::store::marks::pending_events;
 use crate::store::repos::{cwd_of, folder_of, git_out};
 use crate::store::reviews::{keep_saved_review, review_history, review_round};
+use crate::store::settings::lookup::setting_text;
 use crate::store::settings::values::agent_of;
 use crate::store::tasks::{get, update_wait, Change};
 use crate::turn::why_stopped;
@@ -67,7 +68,7 @@ pub fn review_once(id: &str, g: &mut Guard, text: &str, change: Option<&Value>, 
     let mut pane_tab: Option<(String, String)> = None;
     let (mut error, mut review, mut auth, mut cut, mut ended): (String, Option<Obj>, bool, Option<Cut>, bool) = (String::new(), None, false, None, false);
     let run = (|| -> Res<()> {
-        installed::pre_trust(&rkind, &if t.b("root") { PathBuf::from(t.s("root")) } else { folder_of(t.s("id")) }, &who.access, &who.account);
+        installed::pre_trust_owned(&rkind, &if t.b("root") { PathBuf::from(t.s("root")) } else { folder_of(t.s("id")) }, &who.access, &who.account, &setting_text("trust.folders", Some(&t)));
         close_reviewer(id); // a tab left over from an interrupted round
         // Its own tab, never focused: the human stays where they are, and the agent's tab and the board keep their size.
         let label = if plan.is_some() { Some(flow::tabs::PLAN_REVIEW_TAB) } else { None };
