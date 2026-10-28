@@ -86,12 +86,22 @@ pub fn save_prefs(s: &State) {
 fn set_repo(c: &mut Client, dir: String) {
     // The chat follows too: its default is that repo's own coordinator (board/update/coords.rs: talking).
     c.s.web.chat_repo = crate::store::repos::known_repos().iter().find(|(_, d)| text(d) == dir).map(|(n, _)| n.clone()).unwrap_or_default();
-    if c.s.ctx.cwd == dir { return; }
+    let same = c.s.ctx.cwd == dir;
     c.s.ctx.cwd = dir.clone();
     let mut p = crate::store::files::read_obj(&prefs_file()).unwrap_or_default();
     p.insert("cwd".into(), json!(dir));
     let _ = crate::store::files::write_json(&prefs_file(), &Value::Object(p));
-    reload(c);
+    if !same { reload(c); }
+    show_repo(c);
+}
+/// The followed repo's own row, selected: the list is by repo (a workspace is a repo here), and that repo's project
+/// coordinator stands on its row, with its settings, whatever tasks are or are not in it.
+fn show_repo(c: &mut Client) {
+    if c.s.web.chat_repo.is_empty() { return; }
+    if !c.s.by_repo { c.s.by_repo = true; c.s.by_machine = false; save_prefs(&c.s); }
+    crate::board::update::list::relist(&mut c.s);
+    let id = crate::board::update::heads::group_id(&c.s, "", &c.s.web.chat_repo);
+    if crate::board::update::coords::exists(&c.s, &id) { c.s.sel = id; }
 }
 /// The repos with a workspace open in herdr: the root of each pane's folder, read from herdr at most every few seconds.
 pub fn open_repos() -> Vec<std::path::PathBuf> {

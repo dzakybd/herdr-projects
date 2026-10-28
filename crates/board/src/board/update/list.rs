@@ -79,7 +79,7 @@ pub fn relist(s: &mut State) {
         for r in &shown { let g = repo_name(r).to_string(); if !names.contains(&g) { names.push(g); } }
         for a in &s.autos { let g = a.t("repo"); if !names.contains(&g) { names.push(g); } }
         // A repo used lately with no task in view keeps its heading, for its project coordinator (heads.rs: empty_repo).
-        if s.scope.is_empty() || s.scope == "*" { for g in &s.data.lately { if super::heads::empty_repo(s, "", g) && !names.contains(g) { names.push(g.clone()); } } }
+        if s.scope.is_empty() || s.scope == "*" { for g in s.data.lately.iter().chain(std::iter::once(&s.web.chat_repo)) { if !g.is_empty() && super::heads::empty_repo(s, "", g) && !names.contains(g) { names.push(g.clone()); } } }
         for g in project_groups.iter().map(|(g, _)| g.clone()).chain(super::pinned::names(s)) { if !names.contains(&g) { names.push(g); } } // and a pinned project's, under Pinned
         let here = s.data.repo.clone();
         names.sort_by(|a, b| if *a == here { std::cmp::Ordering::Less } else if *b == here { std::cmp::Ordering::Greater } else { a.to_lowercase().cmp(&b.to_lowercase()).then(b.cmp(a)) });

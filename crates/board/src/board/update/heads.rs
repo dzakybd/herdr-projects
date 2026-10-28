@@ -52,6 +52,8 @@ pub fn empty_shown(s: &State) -> bool { filter_now(s).is_empty() && !s.archive_v
 /// (`0 tasks`), so that its project coordinator is still a space away.
 pub fn empty_repo(s: &State, host: &str, name: &str) -> bool {
     if super::pinned::on(s) { return super::pinned::empty_repo(s, host, name); } // Pinned's own (pinned.rs)
+    // The web page follows a workspace: that repo keeps its heading, whatever else is in view, for its project coordinator.
+    if s.ctx.web && s.by_repo && host.is_empty() && !s.archive_view && !s.web.chat_repo.is_empty() && s.web.chat_repo == name { return true; }
     s.by_repo && host.is_empty() && empty_shown(s) && s.data.lately.iter().any(|r| r == name)
 }
 /// One machine's part of the list: its groups, and whether it has a row of its own (all but in the archive: the one
