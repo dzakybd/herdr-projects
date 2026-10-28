@@ -148,6 +148,33 @@ browser tab until it is sent.
 A task on [another machine](other-machines.md) shows and acts as on the terminal board. Its agent's pane is on that
 machine: the board says so instead of opening it.
 
+## Browser notifications
+
+A **bell** in the board's header (between Find and More) tells you, in the browser itself, when a task newly **needs
+you**, is **ready to approve** or has **failed** (the same three events as [`board.notify`](settings.md)). Nothing leaves
+your machine and no other service is involved: it is the browser's own notification, shown by the page.
+
+- **Off until you tap the bell.** The tap asks the browser for permission; allowed, the bell turns green and stays on in
+  that browser (a desktop tab and a phone each have their own bell). Tap it again to turn it off. If the browser has
+  said no for this site, the note under the header says where to allow it again.
+- **Once for each event.** A task is told when it comes into one of the three states, not every two seconds that it
+  stays there; it is told again if it leaves and comes back. What was already so when you turned the bell on, opened the
+  board, picked another machine or filter, or unfolded a group is not news.
+- **The text** is the task's tag and what happened (`HSW-134 needs you`), and its title. Tapping the notification
+  focuses the page and opens that task.
+- **While the board is open.** A tab in the background keeps looking while the bell is on, but a browser that puts a page
+  to sleep (a phone's, after a while with the screen off) stops it until you come back; once the board is closed, nothing
+  is shown. For being told with the board closed, use `board.notify` below. Only tasks in view count: a task in a
+  folded group, or in another machine's board, is not seen.
+- **A phone.** On an iPhone, notifications exist only in the web app added to the Home Screen (iOS 16.4 or later), not in a
+  Safari tab; there the bell says so. The browser also needs an `https` page (the shared link is, as is `localhost`).
+  Chrome on Android shows them through the web UI's service worker where it has one, and a tap on those only opens the page.
+
+On the Mac the board runs on, `herdr-projects set board.notify mac` shows each event as a macOS notification (Notification
+Centre: title `Herdr board`, the event as its subtitle, the task's title as its text), with the board closed too. The text
+reaches `osascript` as its arguments, never inside the script, so a title with quotes or a backslash in it is shown as
+it is. `bell` and a command of your own work as before.
+
 ## Opening a task's agent
 
 **Open this task's agent** opens the task's space again when it was closed (approving or archiving closes it), as the

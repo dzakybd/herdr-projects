@@ -251,10 +251,10 @@ fn check_ty(e: &Entry, v: &Value) -> Res<Value> {
         Ty::Keys => super::key_map::check(e, v),
         Ty::Pilot => super::pilot_values::check(e, v),
         Ty::Notify => {
-            let Value::String(s) = v else { return refuse(format!("{name} must be none, bell, or a command.")) };
+            let Value::String(s) = v else { return refuse(format!("{name} must be none, bell, mac, or a command.")) };
             let w = s.trim();
-            if w.is_empty() { return refuse(format!("{name} must be none, bell, or a command.")); }
-            Ok(json!(if [NONE, "bell"].contains(&w.to_lowercase().as_str()) { w.to_lowercase() } else { w.to_string() }))
+            if w.is_empty() { return refuse(format!("{name} must be none, bell, mac, or a command.")); }
+            Ok(json!(if [NONE, "bell", "mac"].contains(&w.to_lowercase().as_str()) { w.to_lowercase() } else { w.to_string() }))
         }
     }
 }

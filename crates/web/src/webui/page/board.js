@@ -11,6 +11,7 @@ import { accountsEl } from "./accounts.js";
 import { askEl, automationEl, menuEl, pickerEl, toast, trapEscape } from "./sheets.js";
 import { goTo } from "./talk.js";
 import { applyEl } from "./apply.js";
+import { notifyEl, watch, watching } from "./notify.js";
 
 let root = null, timer = null, closing = null, snap = null, mark = "", busy = false;
 let menuOpen = false, picking = false, adding = false, applying = false, managing = false, finding = false, seenMsg = -1, seenGo = null, chat = null, untrap = null, wentTo = 0;
@@ -128,6 +129,7 @@ function take(out) {
   note("");
   if (out.same) return true;
   mark = out.mark; snap = out;
+  watch(snap);
   draw();
   tell({ scope: snap.flags.scope });
   return true;
@@ -191,6 +193,7 @@ export function openBoard({ onClose }) {
       h("span.sw-head-space"),
       h("button.icon-button", { type: "button", "aria-label": "Add an automation", title: "Add an automation", "aria-haspopup": "dialog", onclick: () => { adding = true; draw(); } }, icon("plus")),
       h("button.icon-button", { type: "button", "aria-label": "Find tasks", title: "Find tasks", onclick: () => { finding = !finding; draw(); if (finding) find.focus(); else if (snap?.flags.filter) { find.value = ""; call("find", { text: "" }); } } }, icon("find")),
+      notifyEl((id) => { if (root) call("pick", { id, open: true }); }),
       h("button.icon-button", { type: "button", "aria-label": "More", title: "More", "aria-haspopup": "dialog", onclick: () => { menuOpen = true; draw(); } }, icon("more"))),
     // One row; the wheel scrolls it sideways where it does not fit (a mouse has no sideways swipe).
     h("nav.sw-shows", { "aria-label": "Filters", hidden: true, onwheel: (e) => { const el = e.currentTarget; if (el.scrollWidth <= el.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; e.preventDefault(); el.scrollLeft += e.deltaY; } }),
@@ -217,7 +220,7 @@ export function openBoard({ onClose }) {
   window.addEventListener("resize", fit);
   refresh();
   tell();
-  timer = setInterval(() => { fit(); if (!document.hidden) { followPane(); refresh(); } }, 2000);
+  timer = setInterval(() => { fit(); if (!document.hidden) followPane(); if (!document.hidden || watching()) refresh(); }, 2000);
 }
 export function closeBoard() {
   if (!root) return;
