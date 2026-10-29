@@ -42,16 +42,17 @@ function place() {
 function show(on) {
   if (on && location.hash !== HASH) history.pushState(history.state, "", location.pathname + location.search + HASH);
   if (!on && location.hash === HASH) history.replaceState(history.state, "", location.pathname + location.search);
-  if (on) openBoard({ onClose: () => show(false) }); else closeBoard();
+  if (on) opened(); else closeBoard();
 }
 // The pane the web UI shows when the board opened: another pane picked in its sidebar while the board is open (its
 // address changes, the #board stays) puts the board away, so the agent shows. A second's grace: it writes its address
 // again as the page loads.
 const paneNow = () => new URLSearchParams(location.search).get("pane") || "";
 let openedAt = 0, openedOn = "";
+function opened() { openedAt = Date.now(); openedOn = paneNow(); openBoard({ onClose: () => show(false) }); }
 function follow() {
   if (location.hash === HASH) {
-    if (!isOpen()) { openedAt = Date.now(); openedOn = paneNow(); openBoard({ onClose: () => show(false) }); }
+    if (!isOpen()) opened();
     else if (paneNow() !== openedOn && Date.now() - openedAt > 1000) show(false);
   } else if (isOpen()) closeBoard();
 }

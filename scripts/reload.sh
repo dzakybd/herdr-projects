@@ -6,7 +6,8 @@ set -e
 here=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$here"
 cargo build --release
-pkill -f "$here/target/release/herdr-projects (keeper|keeper-work|serve|door)" 2>/dev/null || true
+# Also the downloaded program's helpers (bin/herdr-projects-<os>-<arch>): started while a source file was newer than the build, they would stay and take the wrapper over.
+pkill -f "$here/(target/release/herdr-projects|bin/herdr-projects-[a-z]+-[a-z0-9_]+) (keeper|keeper-work|serve|door)" 2>/dev/null || true
 sleep 3 # the hook starts nothing while a helper is still ending
 # The hook starts nothing while it still sees a helper's lock fresh, so it is asked again until the front door is up.
 for _ in 1 2 3 4; do

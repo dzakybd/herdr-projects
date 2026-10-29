@@ -36,7 +36,7 @@ pub fn press(c: &mut Client, id: &str, drive: bool) -> Result<String, String> {
     c.s.input.set_text("");
     Ok(draft)
 }
-fn set_scope(c: &mut Client, to: &str) { c.s.scope = to.into(); relist(&mut c.s); super::web::reload(c); }
+fn set_scope(c: &mut Client, to: &str) { c.s.scope = to.into(); relist(&mut c.s); }
 /// What was typed on the page, sent as enter sends it (`delegate`: as tab does). Words the board did not take (an
 /// agent that is busy, a task that is gone) stay the page's draft: true. `to`: who the words were typed for (a task's
 /// agent, or the Coordinator with `reply` false; `scope`: whose board showed then, which decides which machine's
@@ -80,12 +80,23 @@ pub fn pick(c: &mut Client, id: &str, open: bool) {
     let from_firing = c.s.auto_open && c.s.auto().is_some() && !c.s.autos.iter().any(|a| a.s("row") == id);
     if from_firing { super::web::reload(c); crate::board::update::autos::go_to(&mut c.s, id); if c.s.auto_open { return; } }
     c.s.stick.clear(); c.s.full = false; c.s.auto_open = false; c.s.auto_at = -1; c.s.editing = None;
-    super::web::reload(c); // the task may be newer than the last look
+    if !on_board(&c.s, id) { super::web::reload(c); } // a task newer than the last look
     if on_board(&c.s, id) { c.s.sel = id.into(); }
     // An automation's row opens the automation, whole; a task's row the task.
     if c.s.auto().is_some() { c.s.auto_open = open; } else { c.s.full = open && (c.s.current().is_some() || c.s.job().is_some() || crate::board::update::pilot::selected(&c.s).is_some()); }
     c.s.panel_top = 0;
-    super::web::reload(c);
+    if !closer(c) { super::web::reload_later(c); } // a coordinator's or an automation's row has no task to look at
+}
+/// The closer look at the selected task of this machine alone (its conversation, settings, screen): what a tap waits for.
+/// A read of everything runs git and herdr for every repo: it is left to the page's own timer.
+fn closer(c: &mut Client) -> bool {
+    let Some(i) = c.s.items.iter().position(|r| r.s("id") == c.s.sel && r.s("host").is_empty()) else { return false };
+    let mut o = (*c.s.items[i]).clone();
+    let look = crate::board::data::snap(&o);
+    o.put("snap", look);
+    c.s.items[i] = std::sync::Arc::new(o);
+    relist(&mut c.s);
+    true
 }
 /// Tapping a heading folds it, or unfolds it, and selects it.
 pub fn fold(c: &mut Client, id: &str) {
