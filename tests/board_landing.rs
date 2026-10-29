@@ -160,6 +160,7 @@ fn a_tab_of_the_filter_row_shows_the_tasks_of_a_folded_group() {
     s.press(&["ctrl+s"]);
     s.s.folded.insert(WORKING.into()); relist(&mut s.s);
     assert!(under(&s, WORKING).is_empty(), "folded with no filter");
-    s.s.show = 3; relist(&mut s.s); // the Working tab
+    s.s.show = 3; relist(&mut s.s); assert!(under(&s, WORKING).is_empty(), "a terminal board's tab keeps the fold");
+    s.s.ctx.web = true; relist(&mut s.s); // the Working tab
     assert!(!under(&s, WORKING).is_empty(), "a tab is a filter: what it shows is not folded away");
 }

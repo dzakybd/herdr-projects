@@ -42,8 +42,9 @@ pub fn label(s: &State, host: &str) -> String {
     if !host.is_empty() { return crate::shown::words::clean(host); }
     if s.data.host.is_empty() { "this machine".into() } else { crate::shown::words::clean(&s.data.host) }
 }
-/// Folding holds while nothing is filtered (a find, or a tab of the filter row): every task that matches a filter shows.
-pub fn folded(s: &State, id: &str) -> bool { filter_now(s).is_empty() && s.show == 0 && s.folded.contains(id) }
+/// Folding holds while nothing is searched: every task that matches a find shows. A tab of the filter row keeps the folds in
+/// the terminal board; on the web a tab is what you came to see, and a fold does not hide it.
+pub fn folded(s: &State, id: &str) -> bool { filter_now(s).is_empty() && (s.show == 0 || !s.ctx.web) && s.folded.contains(id) }
 /// Whether a machine with nothing in view has its heading: not while a find, the filter row or the archive narrows the
 /// list.
 pub fn empty_shown(s: &State) -> bool { filter_now(s).is_empty() && !s.archive_view && s.show == 0 }
