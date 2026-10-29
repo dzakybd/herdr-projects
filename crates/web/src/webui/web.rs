@@ -68,7 +68,7 @@ pub fn client(id: &str) -> Arc<Mutex<Client>> {
         let fresh = !map.contains_key(&key);
         (map.entry(key.clone()).or_insert_with(|| Arc::new(Mutex::new(Client { id: key, ..open() }))).clone(), fresh)
     };
-    { let mut g = c.lock().unwrap(); g.at = now; if fresh { reload(&mut g); if g.s.all() { poll(&mut g, true); } } }
+    { let mut g = c.lock().unwrap(); g.at = now; if fresh { match super::lastread::recent() { Some(d) => { let fx = update(&mut g.s, Event::Loaded(Box::new(d))); effects(&mut g, fx, false); reload_later(&mut g); } None => reload(&mut g) } if g.s.all() { poll(&mut g, true); } } }
     c
 }
 /// Whose board was picked on the web (the sidebar's Boards, the scope key): the web's own from now on, unless it is
@@ -120,11 +120,11 @@ pub fn reload_later(c: &mut Client) {
     let wants = wants_of(c);
     let inbox = c.inbox.clone();
     c.loaded_at = crate::clock::now();
-    std::thread::spawn(move || { let d = load(&wants); inbox.lock().unwrap().push(Event::Loaded(Box::new(d))); READING.store(false, SeqCst); });
+    std::thread::spawn(move || { let d = load(&wants); super::lastread::keep(&d); inbox.lock().unwrap().push(Event::Loaded(Box::new(d))); READING.store(false, SeqCst); });
 }
 /// Everything read again: the tasks, the closer look at the selected one and the one the chat talks to.
 pub fn reload(c: &mut Client) {
-    let d = load(&wants_of(c));
+    let d = load(&wants_of(c)); super::lastread::keep(&d);
     c.loaded_at = crate::clock::now();
     let fx = update(&mut c.s, Event::Loaded(Box::new(d)));
     effects(c, fx, false);

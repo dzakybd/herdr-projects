@@ -142,6 +142,8 @@ pub fn typed(p: &Press, pick: impl Fn(&Key) -> bool) -> Option<K> { KEYS.iter().
 thread_local! { static BUTTONS: Cell<bool> = const { Cell::new(false) }; }
 /// The web board has buttons, not keys: there a key is named as its button is ("“Undo” brings it back").
 pub fn name_as_buttons(on: bool) { BUTTONS.with(|b| b.set(on)); }
+/// Whether keys are named as buttons now (the web board).
+pub fn as_buttons() -> bool { BUTTONS.with(|b| b.get()) }
 fn own(k: &Key) -> String {
     if BUTTONS.with(|b| b.get()) { if let Some(w) = k.web { return format!("“{w}”"); } }
     if let Some(mine) = super::remap::chords(k.name) { return super::key_style::spell(&mine[0]); }

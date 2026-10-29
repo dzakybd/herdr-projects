@@ -17,6 +17,7 @@ pub mod door_loop;
 pub mod follow;
 pub mod going;
 pub mod ink;
+pub mod lastread;
 pub mod model;
 pub mod open;
 pub mod page;

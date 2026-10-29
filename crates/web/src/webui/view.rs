@@ -93,7 +93,7 @@ fn closer(c: &mut Client) -> bool {
     // In the loaded data, where `relist` takes the list from: a change of the list alone would be lost with it.
     let Some(i) = c.s.data.items.iter().position(|r| r.s("id") == c.s.sel && r.s("host").is_empty()) else { return false };
     let mut o = (*c.s.data.items[i]).clone();
-    let look = crate::board::data::snap(&o);
+    let look = super::lastread::snap_of(&c.s.sel, || crate::board::data::snap(&o));
     o.put("snap", look);
     c.s.data.items[i] = std::sync::Arc::new(o);
     relist(&mut c.s);

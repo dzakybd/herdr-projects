@@ -345,6 +345,10 @@ So the front door stands in front of it instead:
 - **It shows the Herdr the web UI shows**, worked out as the web UI's own start does: the session that started both
   plugins comes first (Herdr hands every plugin its socket), then a socket the web UI's settings name. Not always the
   default session.
+- **It starts the web UI when nothing answers.** herdr starts Ovis only when its own server starts. The front door looks every
+  30 seconds, and when the web UI is installed but nothing answers on its port for two looks in a row, it runs the web UI's
+  own start action (`herdr plugin action invoke start --plugin <id>`), once in five minutes at most. A web UI named by hand
+  (`HERDR_PROJECTS_WEBUI`) is left alone. To keep it stopped, turn the plugin off in herdr (`herdr plugin disable devswha.ovis`).
 - **It follows the web UI**: through its restarts and its own updates (it keeps its port), and to another port when it
   takes one. While the web UI is down, its address answers "not answering right now", and the board lets nobody in.
 

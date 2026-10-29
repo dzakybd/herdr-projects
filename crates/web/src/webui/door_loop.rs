@@ -50,10 +50,25 @@ fn open(door: &Arc<Door>, wants: &[(u16, u32)]) -> Option<Open> {
 }
 fn shut(o: &Open) { o.on.store(false, Ordering::SeqCst); let _ = TcpStream::connect(("127.0.0.1", o.port)); }
 /// The front door's loop, one look at a time: what it has open, and the port it had (a test takes the looks itself).
-pub struct DoorLoop { door: Arc<Door>, server: Option<Open>, saved: u16 }
+pub struct DoorLoop { door: Arc<Door>, server: Option<Open>, saved: u16, silent: u32, started_at: i64 }
 impl Default for DoorLoop { fn default() -> Self { Self::new() } }
 impl DoorLoop {
-    pub fn new() -> Self { DoorLoop { door: Arc::new(Door::default()), server: None, saved: read_json(&door_file()).unwrap_or(Value::Null).i("port") as u16 } }
+    pub fn new() -> Self { DoorLoop { door: Arc::new(Door::default()), server: None, saved: read_json(&door_file()).unwrap_or(Value::Null).i("port") as u16, silent: 0, started_at: 0 } }
+    /// The web UI is installed but nothing answers where it says (herdr starts it only when its own server starts, and that
+    /// can fail while the machine is out of processes): after two looks of silence it is started by its own start action,
+    /// once in five minutes at most. One named by hand, and a test, are left alone.
+    fn revive(&mut self, to: &Option<WebUi>) {
+        use std::net::ToSocketAddrs;
+        let Some(w) = to.as_ref().filter(|w| !w.named && !w.plugin.is_empty() && crate::herdr::cli::fake().is_none()) else { return };
+        let host = if w.host == "0.0.0.0" { "127.0.0.1" } else { w.host.as_str() };
+        let up = (host, w.port).to_socket_addrs().ok().and_then(|mut a| a.next()).is_some_and(|a| TcpStream::connect_timeout(&a, std::time::Duration::from_secs(1)).is_ok());
+        if up { self.silent = 0; return; }
+        self.silent += 1;
+        let now = crate::clock::now();
+        if self.silent < 2 || now - self.started_at < 300_000 { return; }
+        self.started_at = now;
+        let _ = std::process::Command::new(crate::herdr::cli::bin()).args(["plugin", "action", "invoke", "start", "--plugin", &w.plugin]).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).status();
+    }
     /// The port it listens on, while it is open.
     pub fn port(&self) -> Option<u16> { self.server.as_ref().map(|o| o.port) }
     fn write(port: u16, to: &Option<WebUi>) { let mut m = marker(); m.put("port", port); m.put("to", to.as_ref().map(|w| json!({ "host": w.host, "port": w.port })).unwrap_or(Value::Null)); m.put("version", VERSION); let _ = write_json(&door_file(), &Value::Object(m)); }
@@ -61,6 +76,7 @@ impl DoorLoop {
     pub fn tick(&mut self) {
         let before = self.door.to.lock().unwrap().clone();
         let to = self.door.find();
+        self.revive(&to);
         match (&to, &self.server) {
             // The web UI is gone, or the board in it was turned off: its link goes back. On again, it asks for this port.
             (None, Some(o)) => { let _ = link::unlink(Some(o.port), before.as_ref().map(|w| w.port)); self.saved = o.port; shut(o); self.server = None; *self.door.linked.lock().unwrap() = String::new(); let _ = write_json(&door_file(), &json!({})); }
