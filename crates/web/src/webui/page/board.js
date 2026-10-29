@@ -134,13 +134,6 @@ function take(out) {
   tell({ scope: snap.flags.scope });
   return true;
 }
-// The web UI's page names the pane it shows in its address. A workspace clicked there is another pane: the board follows
-// it to that pane's repo (the server decides which repo it is, if one the board knows).
-let followed = "";
-function followPane() {
-  const pane = new URLSearchParams(location.search).get("pane") || "";
-  if (pane && pane !== followed && !busy) { followed = pane; call("follow", { pane }); }
-}
 // An automation from the form: made, or why not (the form shows it).
 async function addAutomation(body) {
   const out = await post("automation", body);
@@ -222,7 +215,7 @@ export function openBoard({ onClose }) {
   window.addEventListener("resize", fit);
   refresh();
   tell();
-  timer = setInterval(() => { fit(); if (!document.hidden) followPane(); if (!document.hidden || watching()) refresh(); }, 2000);
+  timer = setInterval(() => { fit(); if (!document.hidden || watching()) refresh(); }, 2000);
 }
 export function closeBoard() {
   if (!root) return;
