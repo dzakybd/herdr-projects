@@ -5,7 +5,7 @@
 //! Picking one is the choice the scope key makes (whose board you see), made at once: the section and the board are the
 //! same browser's board (web.rs), so the two stay in step.
 use super::pcs::{pc_of, Pc};
-use super::web::{effects, poll, reload, Client};
+use super::web::{effects, poll, reload_later, Client};
 use crate::board::data::Remote;
 use crate::board::state::Rec;
 use crate::json::*;
@@ -53,7 +53,7 @@ pub fn boards(c: &mut Client) -> Value {
     let now = crate::clock::now();
     if now - c.boards_at >= ASK { c.boards_at = now; poll(c, false); }
     // Read again only when what it has is older than a page's look may be (web.rs: LOOK).
-    if crate::herdr::cli::fake().is_some() || now - c.loaded_at >= super::web::LOOK { reload(c); }
+    if crate::herdr::cli::fake().is_some() || now - c.loaded_at >= super::web::LOOK { reload_later(c); }
     let pcs = c.s.web.pcs.clone().unwrap_or_default();
     let mine = with_coords(count(&c.s.data.items), c, "");
     let here = pcs.iter().find(|p| p.local).map(|p| p.name.clone()).filter(|n| !n.is_empty() && n != "local").unwrap_or_else(|| "This machine".into());

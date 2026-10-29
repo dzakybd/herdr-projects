@@ -14,13 +14,13 @@ use std::sync::{Arc, Mutex};
 
 /// `boards_at`: when the sidebar's Boards section last had the other machines asked (boards.rs).
 /// `id`: the page's own name for its board (a call it holds is called by it: voice/board.rs).
-pub struct Client { pub s: State, pub inbox: Arc<Mutex<Vec<Event>>>, pub at: i64, pub machines_at: i64, pub boards_at: i64, pub loaded_at: i64, pub id: String }
+pub struct Client { pub s: State, pub inbox: Arc<Mutex<Vec<Event>>>, pub at: i64, pub machines_at: i64, pub boards_at: i64, pub loaded_at: i64, pub id: String, pub reading: Arc<std::sync::atomic::AtomicBool> }
 const IDLE: i64 = 10 * 60000;
 /// How long a call waits for what a button started (a merge, an agent started); longer, it answers on a later look.
 const WAIT: u64 = 25;
 /// How old what a page's timer shows may be before it is read again: a read runs git and herdr for every repo, and a
 /// page asks every two seconds. What a click does reads again at once.
-pub const LOOK: i64 = 5000;
+pub const LOOK: i64 = 2000;
 static CLIENTS: Mutex<Option<HashMap<String, Arc<Mutex<Client>>>>> = Mutex::new(None);
 pub fn theme() -> &'static Theme { static T: std::sync::OnceLock<Theme> = std::sync::OnceLock::new(); T.get_or_init(Theme::web) }
 fn prefs_file() -> std::path::PathBuf { crate::store::files::data_dir().join("web-view.json") }
@@ -55,7 +55,7 @@ fn open() -> Client {
     // The filter shown on the filter row, the web's own as the terminal board keeps its own.
     s.show = p.at("show").as_u64().map(|n| (n as usize).min(crate::board::update::shows::SHOWS.len() - 1)).unwrap_or(0);
     s.folded = p.arr("folded").iter().filter_map(|x| x.as_str()).map(String::from).collect();
-    Client { s, inbox: Arc::new(Mutex::new(vec![])), at: 0, machines_at: 0, boards_at: 0, loaded_at: 0, id: String::new() }
+    Client { s, inbox: Arc::new(Mutex::new(vec![])), at: 0, machines_at: 0, boards_at: 0, loaded_at: 0, id: String::new(), reading: Default::default() }
 }
 pub fn client(id: &str) -> Arc<Mutex<Client>> {
     let key: String = id.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-').take(40).collect();
@@ -106,10 +106,23 @@ fn show_repo(c: &mut Client) {
     let id = crate::board::update::heads::group_id(&c.s, "", &c.s.web.chat_repo);
     if crate::board::update::coords::exists(&c.s, &id) { c.s.sel = id; }
 }
+fn wants_of(c: &Client) -> Wants {
+    Wants { ids: vec![c.s.sel.clone(), c.s.reply_id.clone()], cwd: c.s.ctx.cwd.clone(), own_pane: String::new(), web: true, coord: crate::board::update::coords::wanted(&c.s), mine: None, looks: crate::board::update::coords::looks_wanted(&c.s), skills: String::new() }
+}
+/// A look a page's timer asked for, read on a thread of its own as the terminal board's loader does: the call answers at
+/// once with what it has, and the read comes in on the next call. One read at a time for a page.
+pub fn reload_later(c: &mut Client) {
+    use std::sync::atomic::Ordering::SeqCst;
+    if crate::herdr::cli::fake().is_some() { return reload(c); }
+    if c.reading.swap(true, SeqCst) { return; }
+    let wants = wants_of(c);
+    let (inbox, reading) = (c.inbox.clone(), c.reading.clone());
+    c.loaded_at = crate::clock::now();
+    std::thread::spawn(move || { let d = load(&wants); inbox.lock().unwrap().push(Event::Loaded(Box::new(d))); reading.store(false, SeqCst); });
+}
 /// Everything read again: the tasks, the closer look at the selected one and the one the chat talks to.
 pub fn reload(c: &mut Client) {
-    let wants = Wants { ids: vec![c.s.sel.clone(), c.s.reply_id.clone()], cwd: c.s.ctx.cwd.clone(), own_pane: String::new(), web: true, coord: crate::board::update::coords::wanted(&c.s), mine: None, looks: crate::board::update::coords::looks_wanted(&c.s), skills: String::new() };
-    let d = load(&wants);
+    let d = load(&wants_of(c));
     c.loaded_at = crate::clock::now();
     let fx = update(&mut c.s, Event::Loaded(Box::new(d)));
     effects(c, fx, false);
@@ -195,7 +208,7 @@ pub fn call_with(client_id: &str, call: &str, args: Value, machine: &str, pcs: O
     let drive = args.s("role") == "drive";
     let watch = || Err::<Value, String>("This device can only watch.".into());
     match call {
-        "board" => { let now = crate::clock::now(); let fx = update(&mut c.s, Event::Tick(now)); let old = crate::herdr::cli::fake().is_none() && now - c.loaded_at < LOOK; effects(c, fx, !old); Ok(snapshot(c, args.s("have"))) }
+        "board" => { let now = crate::clock::now(); let fx = update(&mut c.s, Event::Tick(now)); let due = crate::herdr::cli::fake().is_some() || now - c.loaded_at >= LOOK; effects(c, fx, false); if due { reload_later(c); } Ok(snapshot(c, args.s("have"))) }
         "press" => { let draft = super::view::press(c, args.s("id"), drive)?; if args.s("id") == "scope" { picked(c); } super::going::settle(c, seen, ui, true); let mut o = snapshot(c, ""); o.as_object_mut().unwrap().insert("draft".into(), json!(draft)); Ok(o) }
         "send" => {
             if !drive { return watch(); }

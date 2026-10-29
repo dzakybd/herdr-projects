@@ -3,7 +3,7 @@
 // found (the web UI was redesigned) a small floating Board button shows instead and says so once: the board is never
 // just missing.
 // Nothing shows until the web UI has let you in: the board's first call is refused before that, and is asked again.
-/* global document, window, location, history, MutationObserver, localStorage */
+/* global document, window, location, history, MutationObserver, localStorage, setInterval, Date */
 import { h, icon, get } from "./dom.js";
 import { openBoard, closeBoard, isOpen, freshen } from "./board.js";
 import { boardsEl } from "./boards.js";
@@ -44,7 +44,17 @@ function show(on) {
   if (!on && location.hash === HASH) history.replaceState(history.state, "", location.pathname + location.search);
   if (on) openBoard({ onClose: () => show(false) }); else closeBoard();
 }
-function follow() { if (location.hash === HASH) { if (!isOpen()) openBoard({ onClose: () => show(false) }); } else if (isOpen()) closeBoard(); }
+// The pane the web UI shows when the board opened: another pane picked in its sidebar while the board is open (its
+// address changes, the #board stays) puts the board away, so the agent shows. A second's grace: it writes its address
+// again as the page loads.
+const paneNow = () => new URLSearchParams(location.search).get("pane") || "";
+let openedAt = 0, openedOn = "";
+function follow() {
+  if (location.hash === HASH) {
+    if (!isOpen()) { openedAt = Date.now(); openedOn = paneNow(); openBoard({ onClose: () => show(false) }); }
+    else if (paneNow() !== openedOn && Date.now() - openedAt > 1000) show(false);
+  } else if (isOpen()) closeBoard();
+}
 
 async function begin() {
   const first = await get("hello");
@@ -55,6 +65,7 @@ async function begin() {
   new MutationObserver(place).observe(document.body, { childList: true, subtree: true });
   window.addEventListener("hashchange", follow);
   window.addEventListener("popstate", follow);
+  setInterval(() => { if (isOpen()) follow(); }, 400); // the web UI changes its address with no event of its own
   follow();
 }
 begin();

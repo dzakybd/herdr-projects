@@ -150,3 +150,16 @@ fn the_landing_prefers_the_group_then_tasks_over_automations_and_never_a_heading
     assert_eq!(land(&rows, 5, &all(&["auto:x"]), &open), Some("p/3".into()), "from an automation, the task above when none is left");
     assert_eq!(land(&rows[..2], 1, &[NEEDS.into()], &open), None);
 }
+
+#[test]
+fn a_tab_of_the_filter_row_shows_the_tasks_of_a_folded_group() {
+    let w = world_with(Opts { repo: true, settings: json!({ "review.when": "never" }), ..Default::default() });
+    w.script(json!({ "worker": [{ "status": "working" }] }));
+    let [a, _] = <[String; 2]>::try_from(add(&w, &["One", "Two"])).unwrap();
+    let mut s = board(&w, &a);
+    s.press(&["ctrl+s"]);
+    s.s.folded.insert(WORKING.into()); relist(&mut s.s);
+    assert!(under(&s, WORKING).is_empty(), "folded with no filter");
+    s.s.show = 3; relist(&mut s.s); // the Working tab
+    assert!(!under(&s, WORKING).is_empty(), "a tab is a filter: what it shows is not folded away");
+}
