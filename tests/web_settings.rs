@@ -74,7 +74,7 @@ fn every_setting_of_the_open_task_with_its_label_and_meaning_changed_and_put_bac
     // Its key in More goes there; an archived task's settings are read-only.
     let s = web(&w, "press", json!({ "id": "settings" })); assert_eq!(s.at("settings").i("show"), 1); assert!(!s.at("panel").is_null());
     sw::actions::archive::archive(&t).unwrap();
-    web(&w, "press", json!({ "id": "archiveView" }));
+    web(&w, "press", json!({ "id": "archiveView" })); web(&w, "board", json!({})); // a tap uses what the last look read: the page's own poll came between
     assert_eq!(web(&w, "pick", json!({ "id": t, "open": true })).at("settings").at("canSet"), &json!(false));
 }
 

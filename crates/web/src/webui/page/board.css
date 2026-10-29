@@ -40,8 +40,9 @@
   border-bottom: var(--hairline, 1px) solid var(--sw-line); background: var(--sw-panel);
 }
 .sw-name { margin: 0; font-size: var(--fs-lg, 16px); font-weight: var(--fw-semibold, 600); color: var(--sw-strong); letter-spacing: var(--tracking-tight, -0.01em); }
-.sw-where-pick { max-width: 100%; min-height: var(--touch-target, 40px); padding: 0 var(--space-2, 8px); border: var(--hairline, 1px) solid var(--sw-line); border-radius: var(--radius-md, 8px); background: var(--sw-lift); color: var(--sw-text); font: inherit; }
-.sw-where { color: var(--sw-dim); font-size: var(--fs-xs, 12px); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 480px) { .sw-head .sw-name { display: none; } } /* a phone's header has room for the repo, not for the word Board beside the arrow */
+.sw-where-pick { max-width: 100%; min-width: 6em; text-overflow: ellipsis; min-height: var(--touch-target, 40px); padding: 0 var(--space-2, 8px); border: var(--hairline, 1px) solid var(--sw-line); border-radius: var(--radius-md, 8px); background: var(--sw-lift); color: var(--sw-text); font: inherit; }
+.sw-where { color: var(--sw-dim); font-size: var(--fs-xs, 12px); min-width: min(6em, 100%); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sw-back { font-size: var(--fs-lg, 16px); }
 .sw-note { margin: 0; padding: var(--space-3, 12px) var(--space-4, 16px); color: var(--sw-dim); border-bottom: var(--hairline, 1px) solid var(--sw-line); }
 .sw-head-space { flex: 1; }

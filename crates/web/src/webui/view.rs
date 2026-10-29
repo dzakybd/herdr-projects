@@ -90,11 +90,12 @@ pub fn pick(c: &mut Client, id: &str, open: bool) {
 /// The closer look at the selected task of this machine alone (its conversation, settings, screen): what a tap waits for.
 /// A read of everything runs git and herdr for every repo: it is left to the page's own timer.
 fn closer(c: &mut Client) -> bool {
-    let Some(i) = c.s.items.iter().position(|r| r.s("id") == c.s.sel && r.s("host").is_empty()) else { return false };
-    let mut o = (*c.s.items[i]).clone();
+    // In the loaded data, where `relist` takes the list from: a change of the list alone would be lost with it.
+    let Some(i) = c.s.data.items.iter().position(|r| r.s("id") == c.s.sel && r.s("host").is_empty()) else { return false };
+    let mut o = (*c.s.data.items[i]).clone();
     let look = crate::board::data::snap(&o);
     o.put("snap", look);
-    c.s.items[i] = std::sync::Arc::new(o);
+    c.s.data.items[i] = std::sync::Arc::new(o);
     relist(&mut c.s);
     true
 }
