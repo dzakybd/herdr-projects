@@ -169,7 +169,7 @@ pub fn poll(c: &mut Client, now_too: bool) {
 /// What came in since the last call: answers of jobs and of other machines.
 pub fn take_in(c: &mut Client) {
     let events: Vec<Event> = std::mem::take(&mut *c.inbox.lock().unwrap());
-    for e in events { let fx = update(&mut c.s, e); effects(c, fx, false); }
+    for e in events { let fx = update(&mut c.s, e); super::view::looking(c, fx); }
 }
 /// Everything the page shows, and a short mark of it: a page that already has this one is told only that.
 pub fn snapshot(c: &mut Client, have: &str) -> Value {
@@ -210,7 +210,7 @@ pub fn call_with(client_id: &str, call: &str, args: Value, machine: &str, pcs: O
     let drive = args.s("role") == "drive";
     let watch = || Err::<Value, String>("This device can only watch.".into());
     match call {
-        "board" => { let now = crate::clock::now(); let fx = update(&mut c.s, Event::Tick(now)); let due = crate::herdr::cli::fake().is_some() || now - c.loaded_at >= LOOK; effects(c, fx, false); if due { reload_later(c); } Ok(snapshot(c, args.s("have"))) }
+        "board" => { let now = crate::clock::now(); let fx = update(&mut c.s, Event::Tick(now)); let due = crate::herdr::cli::fake().is_some() || now - c.loaded_at >= LOOK; super::view::looking(c, fx); if due { reload_later(c); } Ok(snapshot(c, args.s("have"))) }
         "press" => { let draft = super::view::press(c, args.s("id"), drive)?; if args.s("id") == "scope" { picked(c); } super::going::settle(c, seen, ui, true); let mut o = snapshot(c, ""); o.as_object_mut().unwrap().insert("draft".into(), json!(draft)); Ok(o) }
         "send" => {
             if !drive { return watch(); }

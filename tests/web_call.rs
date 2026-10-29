@@ -137,7 +137,7 @@ fn switching_by_voice_is_the_boards_own_switch_and_never_a_guess() {
 
 #[test]
 fn a_task_that_came_to_need_you_is_read_once_and_not_while_quiet_and_nothing_from_before() {
-    let w = world();
+    let w = world(); sw::clock::set(Some(sw::clock::now())); // a call is stale after a minute unseen: a loaded machine takes longer than that here
     let _log = fake_eleven(); put_key();
     let approve = |title: &str, file: &str| { w.script(json!({ "worker": [{ "files": { file: "v1\n" }, "commit": "v1", "note": "Did v1." }], "reviewer": [{ "verdict": { "meets": true, "text": "Good.", "findings": [] } }] })); to_approval(&w, title) };
     let before = approve("Make f", "f.txt");

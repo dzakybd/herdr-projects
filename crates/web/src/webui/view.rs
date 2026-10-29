@@ -103,13 +103,20 @@ pub fn fold(c: &mut Client, id: &str) {
     if !c.s.rows.iter().any(|r| matches!(r, crate::board::state::Row::Head { id: h, .. } if h == id && !h.is_empty())) { return; }
     c.s.full = false; c.s.auto_open = false; c.s.editing = None;
     let fx = { let mut fx = vec![]; crate::board::update::heads::toggle(&mut c.s, id, &mut fx); fx };
-    effects(c, fx, false);
+    looking(c, fx);
 }
 /// A tap on the filter row: that filter shown, as tab gets there.
 pub fn show(c: &mut Client, n: usize) {
     let mut fx = vec![];
     crate::board::update::shows::set(&mut c.s, n, &mut fx);
-    effects(c, fx, false);
+    looking(c, fx);
+}
+/// What the board asks for after a look, a tick or an answer that came in (a tab, a fold): a read it wants is left to a thread of its own, so the
+/// tap is answered at once with what the page has.
+pub fn looking(c: &mut Client, fx: Vec<Effect>) {
+    let (load, rest): (Vec<Effect>, Vec<Effect>) = fx.into_iter().partition(|e| matches!(e, Effect::Load));
+    effects(c, rest, false);
+    if !load.is_empty() { super::web::reload_later(c); }
 }
 /// The grouping back to by status (the chip of by repo or by machine, its ×), as the group key gets there going round.
 pub fn by_status(c: &mut Client) {
